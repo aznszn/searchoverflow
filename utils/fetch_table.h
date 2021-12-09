@@ -1,3 +1,10 @@
+//
+// Created by HP on 08/12/2021.
+//
+
+#ifndef UNTITLED_FETCH_TABLE_H
+#define UNTITLED_FETCH_TABLE_H
+
 #include <vector>
 #include <string>
 #include <fstream>
@@ -23,3 +30,5 @@ vector<wstring> readNext(wifstream& file){
         row.push_back(cell);
     return row;
 }
+
+#endif //UNTITLED_FETCH_TABLE_H
