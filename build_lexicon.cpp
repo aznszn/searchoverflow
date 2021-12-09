@@ -89,29 +89,15 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
 
     while (row_stream >> noskipws >> c) {
         switch (c) {
-            case '.':
-            case ',':
-            case '!':
-            case ';':
-            case ':':
-            case '?':
-            case '(':
-            case ' ':
-            case '\t':
-            case '=':
-            case '/':
-            case '\\':
-            case ')':
-            case '{':
-            case '}':
-            case '[':
-            case ']':
-            case '|':
-            case '<':
-            case '>':
-            case '&':
-            case '\n':
-            case '\"':
+            case 'a' ... 'z':
+            case 'A' ... 'Z':
+            case '+':
+            case '#':
+                word.push_back(tolower(c));
+                break;
+            case '\'':
+                break;
+            default:
                 if (!word.empty()) {
                     stem(word);
                     if (word.length() <= MAX_WORD_LEN && !lexicon.count(word)) {
@@ -122,12 +108,11 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
                         }
                         lexicon[word] = i++;
                     }
-                    storesCount[word] = storesCount.count(word) + 1;
+                    else if (word.length() <= MAX_WORD_LEN){
+                        storesCount[word] = storesCount.count(word) + 1;
+                    }
                     word.clear();
                 }
-                break;
-            default:
-                word.push_back(tolower(c));
 
         }
     }
@@ -141,7 +126,9 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
             }
             lexicon[word] = i++;
         }
-        storesCount[word] = storesCount.count(word) + 1;
+        else if (word.length() <= MAX_WORD_LEN){
+            storesCount[word] = storesCount.count(word) + 1;
+        }
         word.clear();
     }
 }
