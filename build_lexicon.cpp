@@ -5,6 +5,8 @@
 #include "stemminglib/english_stem.h"
 #include "utils/fetch_table.h"
 #include "utils/parseHTML.h"
+#define WORDS_IN_FILE 500
+
 using namespace std;
 
 void buildLexicon(unordered_map<wstring, int> &, vector<vector<wstring>>, vector<vector<wstring>>, int&);
@@ -12,19 +14,14 @@ void buildForwardIndex(unordered_map<wstring, int> &, unordered_map<wstring, int
 void utilLexiconFunction(unordered_map<wstring, int> &, unordered_map<wstring, int> &, wstringstream *, int &);
 int getAnswer(int &, vector<vector<wstring>> &, wstring);
 
-int overallCount = 0;
+//int overallCount = 0;
 //wofstream *array_fi = new wofstream[500];
+//TODO: remove global
 auto array_fi = new vector<wofstream>;
 int main() {
     unordered_map<wstring, int> lexicon;
     wofstream lexicon_file("../data_structures/lexicon.txt", ios::out);
     cout << "lexicon file" << endl;
-
-
-    //for (int i = 0; i < 500; ++i){
-        //array_fi->at(i) = wofstream("../data_structures/forwardIndex" + to_string(i) + ".txt", ios::out);
-    //}
-
 
     int i = 0;
 
@@ -38,7 +35,7 @@ int main() {
 
         parseHTML(questions_table, 6);
         cout << "questions HTML parsed" << endl;
-        parseHTML(answers_table, 5);
+        //parseHTML(answers_table, 5);
         cout << "answers HTML parsed" << endl;
 
 
@@ -55,13 +52,8 @@ int main() {
 }
 
 void buildLexicon(unordered_map<wstring, int> &lexicon, vector<vector<wstring>> questions, vector<vector<wstring>> answers, int& i) {
-    const int TITLE = 5;
-    const int BODY = 6;
-    const int ANS_BODY = 5;
-
     int TITLE_IMP = 2;
     int BODY_IMP = 1;
-
 
     int j = 0;
     int k = 0;
@@ -100,21 +92,39 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
 
     while (*row_stream >> noskipws >> c) {
         switch (c) {
-            case 'a' ... 'z':
-            case 'A' ... 'Z':
-                word.push_back(tolower(c));
-                break;
-            case '\'':
-                break;
-            default:
+            case '.':
+            case ',':
+            case '!':
+            case ';':
+            case ':':
+            case '?':
+            case '(':
+            case ' ':
+            case '\t':
+            case '=':
+            case '/':
+            case '\\':
+            case ')':
+            case '{':
+            case '}':
+            case '[':
+            case ']':
+            case '|':
+            case '<':
+            case '>':
+            case '&':
+            case '\n':
+            case '\"':
                 if (!word.empty()) {
+                    //wcout << word << "\t";
                     stem(word);
+                    //wcout << word << "\n";
                     if (word.length() <= 17 && !lexicon.count(word)) {
-                        if(i % 501 == 0) {
-                            array_fi->push_back(wofstream("../data_structures/f_index/" + to_string(i / 501) + ".txt", ios::out));
+                        if(i % (WORDS_IN_FILE + 1) == 0) {
+                            array_fi->push_back(wofstream("../data_structures/f_index/" + to_string(i /(WORDS_IN_FILE + 1)) + ".txt", ios::out));
                         }
                         lexicon[word] = i++;
-                        ++overallCount;
+                        //++overallCount;
                         storesCount[word] = 1;
                     }
                     else if (word.length() <= 17 && storesCount.count(word)) {
@@ -125,16 +135,20 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
                     }
                     word.clear();
                 }
+                break;
+            default:
+                word.push_back(tolower(c));
+
         }
     }
     if (!word.empty()) {
         stem(word);
         if (word.length() <= 17 && !lexicon.count(word)){
-            if(i % 501 == 0) {
-                array_fi->push_back(wofstream("../data_structures/f_index/" + to_string(i / 501) + ".txt", ios::out));
+            if(i % (WORDS_IN_FILE + 1) == 0) {
+                array_fi->push_back(wofstream("../data_structures/f_index/" + to_string(i / (WORDS_IN_FILE + 1)) + ".txt", ios::out));
             }
             lexicon[word] = i++;
-            ++overallCount;
+            //++overallCount;
             storesCount[word] = 1;
         }
         else if (word.length() <= 17 && storesCount.count(word)) {

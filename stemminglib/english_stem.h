@@ -190,7 +190,7 @@ namespace stemming
         /**@param[in,out] text English string to stem.*/
         void operator()(string_typeT& text)
         {
-            if (text.length() < 3)
+            if (text.length() <= 3)
             {
                 return;
             }
