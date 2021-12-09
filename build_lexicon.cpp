@@ -5,14 +5,14 @@
 
 #define WORDS_IN_FILE 500
 #define MAX_WORD_LEN 17
+#define TAGS_IMP 3
 #define TITLE_IMP 2
 #define BODY_IMP 1
-#define TAG_IMP 0
 
 
 using namespace std;
 
-void buildLexicon(unordered_map<wstring, int> &, vector<vector<wstring>>, vector<vector<wstring>>, int&);
+void buildLexicon(unordered_map<wstring, int> &, vector<vector<wstring>>, vector<vector<wstring>>, vector<vector<wstring>>, int&);
 void buildForwardIndex(unordered_map<wstring, int> &, unordered_map<wstring, int> &, int, const wstring&);
 void utilLexiconFunction(unordered_map<wstring, int> &, unordered_map<wstring, int> &, wstringstream&, int &);
 int getAnswer(int &, vector<vector<wstring>> &, const wstring&);
@@ -35,13 +35,17 @@ int main() {
     vector<vector<wstring>> answers_table = fetch_table(answers);
     cout << "answers table fetched" << endl;
 
+    wifstream tags("../dataset/tags_100k.csv");
+    vector<vector<wstring>> tags_table = fetch_table(tags);
+    cout << "tags table fetched" << endl;
+
     parseHTML(questions_table, 6);
     cout << "questions HTML parsed" << endl;
     parseHTML(answers_table, 5);
     cout << "answers HTML parsed" << endl;
 
 
-    buildLexicon(lexicon, questions_table, answers_table, i);
+    buildLexicon(lexicon, questions_table, answers_table, tags_table, i);
 
     for (auto &x: *array_fi)
         x.close();
@@ -54,7 +58,7 @@ int main() {
     lexicon_file.close();
 }
 
-void buildLexicon(unordered_map<wstring, int> &lexicon, vector<vector<wstring>> questions, vector<vector<wstring>> answers, int& i) {
+void buildLexicon(unordered_map<wstring, int> &lexicon, vector<vector<wstring>> questions, vector<vector<wstring>> answers, vector<vector<wstring>> tags, int& i) {
     int j = 0;
     int k = 0;
 
@@ -107,9 +111,13 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
                                     ios::out));
                         }
                         lexicon[word] = i++;
+                        storesCount[word] = 1;
+                    }
+                    else if (word.length() <= MAX_WORD_LEN && storesCount.count(word)){
+                        storesCount[word] += 1;
                     }
                     else if (word.length() <= MAX_WORD_LEN){
-                        storesCount[word] = storesCount.count(word) + 1;
+                        storesCount[word] = 1;
                     }
                     word.clear();
                 }
@@ -125,9 +133,13 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
                         ios::out));
             }
             lexicon[word] = i++;
+            storesCount[word] = 1;
+        }
+        else if (word.length() <= MAX_WORD_LEN && storesCount.count(word)){
+            storesCount[word] += 1;
         }
         else if (word.length() <= MAX_WORD_LEN){
-            storesCount[word] = storesCount.count(word) + 1;
+            storesCount[word] += 1;
         }
         word.clear();
     }
