@@ -1,8 +1,7 @@
-#include "bits/stdc++.h"
 #include "stemminglib/english_stem.h"
 #include "utils/fetch_table.h"
 #include "utils/parseHTML.h"
-
+#include "inverted_index.h"
 
 #define WORDS_IN_FILE 500
 #define MAX_WORD_LEN 17
@@ -12,24 +11,26 @@
 
 using namespace std;
 
-
-void buildLexicon(unordered_map<wstring, int> &, vector<vector<wstring>>, vector<vector<wstring>>, vector<vector<wstring>>, int&);
+void buildLexicon(unordered_map<wstring, int> &, vector<vector<wstring>>, vector<vector<wstring>>, vector<vector<wstring>>, int&, unordered_map<wstring, int> &);
 void buildForwardIndex(unordered_map<wstring, int> &, unordered_map<wstring, int> &, int, const wstring&, unordered_map<wstring, wstring> &);
-void utilLexiconFunction(unordered_map<wstring, int> &, unordered_map<wstring, int> &, wstringstream&, int &, unordered_map<wstring, wstring> &, int &);
+void utilLexiconFunction(unordered_map<wstring, int> &, unordered_map<wstring, int> &, wstringstream&, int &, unordered_map<wstring, wstring> &, int &, unordered_map<wstring, int> &);
 int getAnswer(int &, vector<vector<wstring>> &, const wstring&);
 int getTag(int &, vector<vector<wstring>>&, const wstring&);
-void utilLexiconForTags(unordered_map<wstring, int> &, wstringstream &, int &, vector<wstring> &);
+void utilLexiconForTags(unordered_map<wstring, int> &, wstringstream &, int &, vector<wstring> &, unordered_map<wstring,int>&);
 void buildForwardIndexTags(unordered_map<wstring, int> &, int, wstring &, vector<wstring> &);
-void buildInvertedIndex();
+void readStopWords(unordered_map<wstring, int> &);
 
 
 //TODO: remove global
 auto array_fi = new vector<wofstream>;
 int main() {
     {
+        unordered_map<wstring, int> stopWordsLexicon;
+        readStopWords(stopWordsLexicon);
+        cout << "Stop Words Lexicon made" << endl;
+
         unordered_map<wstring, int> lexicon;
         wofstream lexicon_file("../data_structures/lexicon.txt", ios::out);
-        cout << "lexicon file" << endl;
 
         int i = 0;
 
@@ -49,26 +50,28 @@ int main() {
         parseHTML(answers_table, 5);
         cout << "answers HTML parsed" << endl;
 
-        buildLexicon(lexicon, questions_table, answers_table, tags_table, i);
+        buildLexicon(lexicon, questions_table, answers_table, tags_table, i, stopWordsLexicon);
 
         for (auto &x: *array_fi)
             x.close();
 
         cout << (*array_fi).size() << endl;
-        //buildInvertedIndex();
         delete array_fi;
 
         //writing lexicon to file
         for (auto &x: lexicon)
             lexicon_file << x.first << L"," << x.second << "\n";
 
+        cout << "Lexicon file created" << endl;
 
         lexicon_file.close();
     }
-    buildInvertedIndex();
+
+    buildInverted();
+    cout << "Built inverted" << endl;
 }
 
-void buildLexicon(unordered_map<wstring, int> &lexicon, vector<vector<wstring>> questions, vector<vector<wstring>> answers, vector<vector<wstring>> tags, int& i) {
+void buildLexicon(unordered_map<wstring, int> &lexicon, vector<vector<wstring>> questions, vector<vector<wstring>> answers, vector<vector<wstring>> tags, int& i, unordered_map<wstring, int> &stopWordsLexicon) {
     int j = 0; // for questions counter
     int k = 0; // for answers counter
     int t = 0; // for tags counter
@@ -90,18 +93,18 @@ void buildLexicon(unordered_map<wstring, int> &lexicon, vector<vector<wstring>> 
                 break;
             }
             auto row_stream = wstringstream(tags[tagFound][1]);
-            utilLexiconForTags(lexicon, row_stream, i, wordsInTags);
+            utilLexiconForTags(lexicon, row_stream, i, wordsInTags, stopWordsLexicon);
         }
         buildForwardIndexTags(lexicon, TAGS_IMP, questions[j][0], wordsInTags);
 
-        // questions titles
+        // question titles
         auto row_stream = wstringstream(questions[j][5]);
-        utilLexiconFunction(lexicon, storesCount, row_stream, i, hits, overallCharacterCount);
+        utilLexiconFunction(lexicon, storesCount, row_stream, i, hits, overallCharacterCount, stopWordsLexicon);
         buildForwardIndex(lexicon, storesCount, TITLE_IMP, questions[j][0], hits);
 
         // questions body
         row_stream = wstringstream(questions[j][6]);
-        utilLexiconFunction(lexicon, storesQACount, row_stream, i, hitsQA, overallCharacterCount);
+        utilLexiconFunction(lexicon, storesQACount, row_stream, i, hitsQA, overallCharacterCount, stopWordsLexicon);
 
         // answers for that specific question
         int max = INT_MIN;
@@ -118,7 +121,7 @@ void buildLexicon(unordered_map<wstring, int> &lexicon, vector<vector<wstring>> 
             }
 
             row_stream = wstringstream(answers[ansFound][5]);
-            utilLexiconFunction(lexicon, storesQACount, row_stream, i, hitsQA, overallCharacterCount);
+            utilLexiconFunction(lexicon, storesQACount, row_stream, i, hitsQA, overallCharacterCount, stopWordsLexicon);
         }
         buildForwardIndex(lexicon, storesQACount, BODY_IMP, questions[j][0], hitsQA);
 
@@ -128,7 +131,7 @@ void buildLexicon(unordered_map<wstring, int> &lexicon, vector<vector<wstring>> 
     }
 }
 
-void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wstring, int> &storesCount, wstringstream& row_stream, int &i, unordered_map<wstring, wstring> &hits, int &overallCharacterCount){
+void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wstring, int> &storesCount, wstringstream& row_stream, int &i, unordered_map<wstring, wstring> &hits, int &overallCharacterCount, unordered_map<wstring, int> &stopWordsLexicon){
     wstring word;
     stemming::english_stem<> stem;
     wchar_t c;
@@ -146,7 +149,7 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
             default:
                 if (!word.empty()) {
                     stem(word);
-                    if (word.length() <= MAX_WORD_LEN && !lexicon.count(word)) {
+                    if (word.length() <= MAX_WORD_LEN && !lexicon.count(word) && !stopWordsLexicon.count(word)) {
                         if (i % (WORDS_IN_FILE) == 0) {
                             array_fi->push_back(wofstream(
                                     "../data_structures/f_index/" + to_string(i / (WORDS_IN_FILE )) + ".txt",
@@ -158,13 +161,13 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
                         ++overallCharacterCount;
                         hits[word] = hits[word] + L"," + to_wstring(overallCharacterCount);
                     }
-                    else if (word.length() <= MAX_WORD_LEN && storesCount.count(word)){
+                    else if (word.length() <= MAX_WORD_LEN && storesCount.count(word) && !stopWordsLexicon.count(word)){
                         storesCount[word] += 1;
 
                         ++overallCharacterCount;
                         hits[word] = hits[word] + L"," + to_wstring(overallCharacterCount);
                     }
-                    else if (word.length() <= MAX_WORD_LEN){
+                    else if (word.length() <= MAX_WORD_LEN && !stopWordsLexicon.count(word)){
                         storesCount[word] = 1;
 
                         ++overallCharacterCount;
@@ -177,7 +180,7 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
     }
     if (!word.empty()) {
         stem(word);
-        if (word.length() <= MAX_WORD_LEN && !lexicon.count(word)) {
+        if (word.length() <= MAX_WORD_LEN && !lexicon.count(word) && !stopWordsLexicon.count(word)) {
             if (i % (WORDS_IN_FILE) == 0) {
                 array_fi->push_back(wofstream(
                         "../data_structures/f_index/" + to_string(i / (WORDS_IN_FILE)) + ".txt",
@@ -189,13 +192,13 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
             ++overallCharacterCount;
             hits[word] = hits[word] + L"," + to_wstring(overallCharacterCount);
         }
-        else if (word.length() <= MAX_WORD_LEN && storesCount.count(word)){
+        else if (word.length() <= MAX_WORD_LEN && storesCount.count(word) && !stopWordsLexicon.count(word)){
             storesCount[word] += 1;
 
             ++overallCharacterCount;
             hits[word] = hits[word] + L"," + to_wstring(overallCharacterCount);
         }
-        else if (word.length() <= MAX_WORD_LEN){
+        else if (word.length() <= MAX_WORD_LEN && !stopWordsLexicon.count(word)){
             storesCount[word] += 1;
 
             ++overallCharacterCount;
@@ -205,7 +208,7 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
     }
 }
 
-void utilLexiconForTags(unordered_map<wstring, int> &lexicon, wstringstream &row_stream, int &i, vector<wstring> &wordsInTags){
+void utilLexiconForTags(unordered_map<wstring, int> &lexicon, wstringstream &row_stream, int &i, vector<wstring> &wordsInTags, unordered_map<wstring, int>& stopWordsLexicon){
     wstring word;
     stemming::english_stem<> stem;
     wchar_t c;
@@ -223,7 +226,7 @@ void utilLexiconForTags(unordered_map<wstring, int> &lexicon, wstringstream &row
             default:
                 if (!word.empty()) {
                     stem(word);
-                    if (word.length() <= MAX_WORD_LEN && !lexicon.count(word)) {
+                    if (word.length() <= MAX_WORD_LEN && !lexicon.count(word) && !stopWordsLexicon.count(word)) {
                         if (i % (WORDS_IN_FILE) == 0) {
                             array_fi->push_back(wofstream(
                                     "../data_structures/f_index/" + to_string(i / (WORDS_IN_FILE)) + ".txt",
@@ -239,7 +242,7 @@ void utilLexiconForTags(unordered_map<wstring, int> &lexicon, wstringstream &row
     }
     if (!word.empty()) {
         stem(word);
-        if (word.length() <= MAX_WORD_LEN && !lexicon.count(word)) {
+        if (word.length() <= MAX_WORD_LEN && !lexicon.count(word) && !stopWordsLexicon.count(word)) {
             if (i % (WORDS_IN_FILE) == 0) {
                 array_fi->push_back(wofstream(
                         "../data_structures/f_index/" + to_string(i / (WORDS_IN_FILE)) + ".txt",
@@ -264,7 +267,7 @@ void buildForwardIndexTags(unordered_map<wstring, int> &lexicon, int importance,
     //documentId, wordId, importance
     for (auto &x : wordsInTags){
         int wordId = lexicon[x];
-        array_fi->at(wordId / (WORDS_IN_FILE)) << endl << id << L"," << (wordId - (wordId/WORDS_IN_FILE)*500) << L"," << importance;
+        array_fi->at(wordId / (WORDS_IN_FILE)) << endl << id << L"," << (wordId - (wordId/WORDS_IN_FILE)*500) << L"," << importance << 1 << L"," << 0;
     }
 }
 
@@ -288,33 +291,14 @@ inline int getTag(int &t, vector<vector<wstring>>& tags, const wstring& id){
 // answers score max 46%
 // questions score 33%
 // number of answers 21%
-void buildInvertedIndex()
-{
-    using namespace std::filesystem;
-    string path = R"(C:\searchoverflow\data_structures\f_index)";
 
-    for(const auto& entry : directory_iterator(path)) {
-        wifstream curr(entry.path());
-        vector<vector<wstring>> f_index_file = fetch_table(curr);
-
-        auto sorted = vector<vector<wstring>>(f_index_file.size());
-        vector<int> elem_array(1000, 0);
-
-        for(auto& x : f_index_file)
-            elem_array[stoi(x[1])]++;
-
-        for(int i = 1; i < 1000; ++i)
-            elem_array[i] += elem_array[i-1];
-
-        for(auto & i : f_index_file)
-            sorted.at(elem_array[stoi(i[1])]-- - 1) = i;
-
-        wofstream currOut(entry.path(), ios::out);
-        for(auto& row: sorted){
-            for(auto& column : row)
-                currOut << column << ",";
-            currOut.seekp(-1, ios::cur);
-            currOut << "\n";
-        }
+void readStopWords(unordered_map<wstring, int> &map){
+    wstring word;
+    stemming::english_stem<> stem;
+    wifstream stopWordsFile("../dataset/stop_words_english.txt");
+    while (!stopWordsFile.eof()){
+        getline(stopWordsFile, word);
+        stem(word);
+        map[word] = 0;
     }
 }

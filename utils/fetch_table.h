@@ -4,10 +4,7 @@
 
 #ifndef UNTITLED_FETCH_TABLE_H
 #define UNTITLED_FETCH_TABLE_H
-
-#include <vector>
-#include <string>
-#include <fstream>
+#include <sstream>
 
 using namespace std;
 vector<wstring> readNext(wifstream& file);

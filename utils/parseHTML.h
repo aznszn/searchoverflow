@@ -9,6 +9,8 @@
 #define link_rgx L"https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)"
 #define tag_rgx L"<([a-z]|\\/){1,70}?>"
 
+#include <regex>
+
 void parseHTML(vector<vector<wstring>>& table, int i){
     const wregex code(code_rgx);
     const wregex links(link_rgx);
