@@ -1,3 +1,7 @@
+//
+// Created by HP on 16/12/2021.
+//
+
 #include "stemminglib/english_stem.h"
 #include <sstream>
 
@@ -14,10 +18,12 @@ int main(){
     unordered_map<wstring, int> lexicon = getLexicon();
     vector<wstring> words = getAndParseQuery();
 
+
     vector<int> queryWordIDs;
     for(auto& w : words){
-        if(lexicon.count(w))
+        if(lexicon.count(w)){
             queryWordIDs.push_back(lexicon[w]);
+        }
     }
 
     vector<vector<wstring>> docs;
@@ -32,12 +38,14 @@ int main(){
             if(stoi(id_in_barrel) == (ID%500)){
                 wordID_docs.push_back(docID);
             }
-            if(stoi(id_in_barrel) > ID)
+            if(stoi(id_in_barrel) > ID){
                 break;
+            }
             getline(barrel, docID);
         }
         docs.push_back(wordID_docs);
     }
+
 
     for(auto& item: docs){
         sort(item.begin(), item.end());
@@ -51,25 +59,40 @@ int main(){
 
     vector<wstring> intersection(max);
 
-    if(queryWordIDs.size() > 1 ) {
+    if (queryWordIDs.size() > 1) {
         set_intersection(docs[0].begin(), docs[0].end(), docs[1].begin(), docs[1].end(), intersection.begin());
         for (int i = 2; i < docs.size(); ++i) {
             vector<wstring> temp(max);
             set_intersection(intersection.begin(), intersection.end(), docs[i].begin(), docs[i].end(), temp.begin());
+
+            temp.erase(remove_if(temp.begin(), temp.end(),
+                                         [](const wstring& s)
+                                         { return s.empty(); }), temp.end());
+
             intersection = temp;
             temp.clear();
         }
 
+        intersection.erase(remove_if(intersection.begin(), intersection.end(),
+                                 [](const wstring& s)
+                                 { return s.empty(); }), intersection.end());
 
         sort(intersection.begin(), intersection.end(), [&docs_info](const wstring& a, const wstring& b) {
             if (a.empty() || b.empty())
                 return false;
+            //wcout << a << L" " <<  b << endl;
             return stod(docs_info[a][1]) > stod(docs_info[b][1]);
         });
     }
 
-    else if(!queryWordIDs.empty())
+    else if(!queryWordIDs.empty()){
         intersection = docs[0];
+    }
+
+    else {
+        cout << "Words do not exist in the Lexicon" << endl;
+    }
+
 
     for(auto& document : intersection){
         if(!document.empty())
@@ -83,6 +106,8 @@ unordered_map<wstring, vector<wstring>> getDocsInfo() {
     docs_info.reserve(100000);
     wstring word;
     wstring str;
+    getline(doclist, word);
+    word.clear();
     while(getline(doclist, word, L',')){
         vector<wstring> info;
         getline(doclist, str, L',');
@@ -147,5 +172,3 @@ vector<wstring> getAndParseQuery() {
     }
     return words;
 }
-
-
