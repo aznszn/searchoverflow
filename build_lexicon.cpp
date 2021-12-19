@@ -8,6 +8,12 @@
 #define TAGS_IMP 3
 #define TITLE_IMP 2
 #define BODY_IMP 1
+#define LINECAP 200
+#define QBODY_COL 6
+#define QTITLE_COL 5
+#define ANSBODY_COL 5
+#define ANS_PID_COL 3
+#define SCORE_COL 4
 
 using namespace std;
 
@@ -45,9 +51,9 @@ int main() {
         wifstream tags("../dataset/tags_100k.csv");
         vector<vector<wstring>> tags_table = fetch_table(tags);
         cout << "tags table fetched" << endl;
-        parseHTML(questions_table, 6);
+        parseHTML(questions_table, QBODY_COL);
         cout << "questions HTML parsed" << endl;
-        parseHTML(answers_table, 5);
+        parseHTML(answers_table, ANSBODY_COL);
         cout << "answers HTML parsed" << endl;
 
         buildLexicon(lexicon, questions_table, answers_table, tags_table, i, stopWordsLexicon);
@@ -56,6 +62,7 @@ int main() {
             x.close();
 
         cout << (*array_fi).size() << endl;
+
         delete array_fi;
 
         //writing lexicon to file
@@ -98,12 +105,12 @@ void buildLexicon(unordered_map<wstring, int> &lexicon, vector<vector<wstring>> 
         buildForwardIndexTags(lexicon, TAGS_IMP, questions[j][0], wordsInTags);
 
         // question titles
-        auto row_stream = wstringstream(questions[j][5]);
+        auto row_stream = wstringstream(questions[j][QTITLE_COL]);
         utilLexiconFunction(lexicon, storesCount, row_stream, i, hits, overallCharacterCount, stopWordsLexicon);
         buildForwardIndex(lexicon, storesCount, TITLE_IMP, questions[j][0], hits);
 
         // questions body
-        row_stream = wstringstream(questions[j][6]);
+        row_stream = wstringstream(questions[j][QBODY_COL]);
         utilLexiconFunction(lexicon, storesQACount, row_stream, i, hitsQA, overallCharacterCount, stopWordsLexicon);
 
         // answers for that specific question
@@ -116,16 +123,16 @@ void buildLexicon(unordered_map<wstring, int> &lexicon, vector<vector<wstring>> 
                 break;
             }
             ++answerCount;
-            if (stoi(answers[ansFound][4]) > max){
-                max = stoi(answers[ansFound][4]);
+            if (stoi(answers[ansFound][SCORE_COL]) > max){
+                max = stoi(answers[ansFound][SCORE_COL]);
             }
 
-            row_stream = wstringstream(answers[ansFound][5]);
+            row_stream = wstringstream(answers[ansFound][ANSBODY_COL]);
             utilLexiconFunction(lexicon, storesQACount, row_stream, i, hitsQA, overallCharacterCount, stopWordsLexicon);
         }
         buildForwardIndex(lexicon, storesQACount, BODY_IMP, questions[j][0], hitsQA);
 
-        double rank = 0.46 * max + 0.33 * stoi(questions[j][4]) + 0.21 * answerCount;
+        double rank = 0.46 * max + 0.33 * stoi(questions[j][SCORE_COL]) + 0.21 * answerCount;
         docList << endl << questions[j][0] << L"," << overallCharacterCount << L"," << rank;
         ++j;
     }
@@ -159,19 +166,22 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
                         storesCount[word] = 1;
 
                         ++overallCharacterCount;
-                        hits[word] = hits[word] + L"," + to_wstring(overallCharacterCount);
+                        if(hits[word].length() + to_wstring(overallCharacterCount).length() + 20 < LINECAP)
+                            hits[word] = hits[word] + L"," + to_wstring(overallCharacterCount);
                     }
                     else if (word.length() <= MAX_WORD_LEN && storesCount.count(word) && !stopWordsLexicon.count(word)){
                         storesCount[word] += 1;
 
                         ++overallCharacterCount;
-                        hits[word] = hits[word] + L"," + to_wstring(overallCharacterCount);
+                        if(hits[word].length() + to_wstring(overallCharacterCount).length() + 20 < LINECAP)
+                            hits[word] = hits[word] + L"," + to_wstring(overallCharacterCount);
                     }
                     else if (word.length() <= MAX_WORD_LEN && !stopWordsLexicon.count(word)){
                         storesCount[word] = 1;
 
                         ++overallCharacterCount;
-                        hits[word] = hits[word] + L"," + to_wstring(overallCharacterCount);
+                        if(hits[word].length() + to_wstring(overallCharacterCount).length() + 20 < LINECAP)
+                            hits[word] = hits[word] + L"," + to_wstring(overallCharacterCount);
                     }
                     word.clear();
                 }
@@ -190,19 +200,22 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
             storesCount[word] = 1;
 
             ++overallCharacterCount;
-            hits[word] = hits[word] + L"," + to_wstring(overallCharacterCount);
+            if(hits[word].length() + to_wstring(overallCharacterCount).length() + 20 < LINECAP)
+                hits[word] = hits[word] + L"," + to_wstring(overallCharacterCount);
         }
         else if (word.length() <= MAX_WORD_LEN && storesCount.count(word) && !stopWordsLexicon.count(word)){
             storesCount[word] += 1;
 
             ++overallCharacterCount;
-            hits[word] = hits[word] + L"," + to_wstring(overallCharacterCount);
+            if(hits[word].length() + to_wstring(overallCharacterCount).length() + 20 < LINECAP)
+                hits[word] = hits[word] + L"," + to_wstring(overallCharacterCount);
         }
         else if (word.length() <= MAX_WORD_LEN && !stopWordsLexicon.count(word)){
             storesCount[word] += 1;
 
             ++overallCharacterCount;
-            hits[word] = hits[word] + L"," + to_wstring(overallCharacterCount);
+            if(hits[word].length() + to_wstring(overallCharacterCount).length() + 20 < LINECAP)
+                hits[word] = hits[word] + L"," + to_wstring(overallCharacterCount);
         }
         word.clear();
     }
@@ -259,7 +272,9 @@ void buildForwardIndex(unordered_map<wstring, int> &lexicon, unordered_map<wstri
     //documentId, wordId, importance, numberOfHits, hits
     for(auto &x: storesCount){
         int wordId = lexicon[x.first];
-        array_fi->at(wordId / (WORDS_IN_FILE)) << endl << id << L"," << (wordId - (wordId/WORDS_IN_FILE)*500) << L"," << importance << L"," << x.second << hits[x.first];
+        wstringstream ss;
+        ss  << endl << id << L"," << (wordId - (wordId/WORDS_IN_FILE)*WORDS_IN_FILE) << L"," << importance << L"," << x.second << hits[x.first];
+        array_fi->at(wordId / (WORDS_IN_FILE)) << ss.str() << setw(LINECAP - ss.str().length()) << " ";
     }
 }
 
@@ -267,12 +282,14 @@ void buildForwardIndexTags(unordered_map<wstring, int> &lexicon, int importance,
     //documentId, wordId, importance
     for (auto &x : wordsInTags){
         int wordId = lexicon[x];
-        array_fi->at(wordId / (WORDS_IN_FILE)) << endl << id << L"," << (wordId - (wordId/WORDS_IN_FILE)*500) << L"," << importance << 1 << L"," << 0;
+        wstringstream ss;
+        ss  << "\n" << id << L"," << (wordId - (wordId/WORDS_IN_FILE)*WORDS_IN_FILE) << L"," << importance << 1 << L"," << 0;
+        array_fi->at(wordId / (WORDS_IN_FILE)) << ss.str() << setw(LINECAP - ss.str().length()) << " ";
     }
 }
 
 inline int getAnswer(int &k, vector<vector<wstring>>& answers, const wstring& id){
-    if(k < answers.size() && answers[k][3] == id)
+    if(k < answers.size() && answers[k][ANS_PID_COL] == id)
         return k++;
     else
         return -1;

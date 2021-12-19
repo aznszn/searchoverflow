@@ -1,9 +1,8 @@
-//
-// Created by HP on 16/12/2021.
-//
-
 #include "stemminglib/english_stem.h"
+#include <chrono>
 #include <sstream>
+#define LINE_SIZE 201
+#define WORDS_IN_BARRELS 500
 
 using namespace std;
 
@@ -12,91 +11,135 @@ vector<vector<wstring>> fetch_table(wifstream& file);
 vector<wstring> getAndParseQuery();
 unordered_map<wstring, int> getLexicon();
 unordered_map<wstring, vector<wstring>> getDocsInfo();
+void getLineNums(vector<unordered_map<wstring, int>> &lineNums);
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "EndlessLoop"
 int main(){
     unordered_map<wstring, vector<wstring>> docs_info = getDocsInfo();
+    vector<unordered_map<wstring, int>> lineNums;
+    getLineNums(lineNums);
     unordered_map<wstring, int> lexicon = getLexicon();
-    vector<wstring> words = getAndParseQuery();
 
+    while(true) {
+        vector<wstring> words = getAndParseQuery();
 
-    vector<int> queryWordIDs;
-    for(auto& w : words){
-        if(lexicon.count(w)){
-            queryWordIDs.push_back(lexicon[w]);
-        }
-    }
-
-    vector<vector<wstring>> docs;
-    for(auto& ID : queryWordIDs){
-        wifstream barrel("../data_structures/f_index/" + to_string(ID/500) + ".txt");
-        wstring docID;
-        wstring id_in_barrel;
-        vector<wstring> wordID_docs;
-
-        while(getline(barrel, docID, L',')){
-            getline(barrel, id_in_barrel, L',');
-            if(stoi(id_in_barrel) == (ID%500)){
-                wordID_docs.push_back(docID);
+        vector<int> queryWordIDs;
+        for (auto &w: words) {
+            if (lexicon.count(w)) {
+                queryWordIDs.push_back(lexicon[w]);
             }
-            if(stoi(id_in_barrel) > ID){
-                break;
+        }
+
+        vector<vector<wstring>> docs;
+        using namespace std::chrono;
+        auto start = high_resolution_clock::now();
+        for (auto &ID: queryWordIDs) {
+            vector<wstring> wordID_docs;
+            vector<wstring> indexFile(0, L"");
+            wstring idstr = to_wstring(ID % WORDS_IN_BARRELS);
+            int lineNum = lineNums[(ID / WORDS_IN_BARRELS)][idstr];
+
+            wifstream barrel("../data_structures/f_index/" + to_string(ID / WORDS_IN_BARRELS) + ".txt");
+            wstring line;
+            barrel.seekg((lineNum - 1) * LINE_SIZE);
+
+            wstring docID;
+            wstring id_in_barrel;
+
+
+            while (getline(barrel, docID, L',')) {
+                getline(barrel, id_in_barrel, L',');
+                if (id_in_barrel == idstr)
+                    wordID_docs.push_back(docID);
+
+                if (id_in_barrel.size() > idstr.size() || (id_in_barrel.size() == idstr.size() && id_in_barrel > idstr))
+                    break;
+
+                getline(barrel, docID);
             }
-            getline(barrel, docID);
-        }
-        docs.push_back(wordID_docs);
-    }
-
-
-    for(auto& item: docs){
-        sort(item.begin(), item.end());
-    }
-
-    int max =  0;
-    for(auto& doc : docs){
-        if(doc.size() > max)
-            max = doc.size();
-    }
-
-    vector<wstring> intersection(max);
-
-    if (queryWordIDs.size() > 1) {
-        set_intersection(docs[0].begin(), docs[0].end(), docs[1].begin(), docs[1].end(), intersection.begin());
-        for (int i = 2; i < docs.size(); ++i) {
-            vector<wstring> temp(max);
-            set_intersection(intersection.begin(), intersection.end(), docs[i].begin(), docs[i].end(), temp.begin());
-
-            temp.erase(remove_if(temp.begin(), temp.end(),
-                                         [](const wstring& s)
-                                         { return s.empty(); }), temp.end());
-
-            intersection = temp;
-            temp.clear();
+            docs.push_back(wordID_docs);
+            barrel.close();
         }
 
-        intersection.erase(remove_if(intersection.begin(), intersection.end(),
-                                 [](const wstring& s)
-                                 { return s.empty(); }), intersection.end());
+        duration<double, std::milli> timeTaken = high_resolution_clock::now() - start;
 
-        sort(intersection.begin(), intersection.end(), [&docs_info](const wstring& a, const wstring& b) {
-            if (a.empty() || b.empty())
-                return false;
-            //wcout << a << L" " <<  b << endl;
-            return stod(docs_info[a][1]) > stod(docs_info[b][1]);
-        });
+        for (auto &item: docs) {
+            sort(item.begin(), item.end());
+        }
+
+        int max = 0;
+        for (auto &doc: docs) {
+            if (doc.size() > max)
+                max = doc.size();
+        }
+
+        vector<wstring> intersection(max);
+
+        if (queryWordIDs.size() > 1) {
+            set_intersection(docs[0].begin(), docs[0].end(), docs[1].begin(), docs[1].end(), intersection.begin());
+            for (int i = 2; i < docs.size(); ++i) {
+                vector<wstring> temp(max);
+                set_intersection(intersection.begin(), intersection.end(), docs[i].begin(), docs[i].end(),
+                                 temp.begin());
+
+                temp.erase(remove_if(temp.begin(), temp.end(),
+                                     [](const wstring &s) { return s.empty(); }), temp.end());
+
+                intersection = temp;
+                temp.clear();
+            }
+
+            intersection.erase(remove_if(intersection.begin(), intersection.end(),
+                                         [](const wstring &s) { return s.empty(); }), intersection.end());
+
+            sort(intersection.begin(), intersection.end(), [&docs_info](const wstring &a, const wstring &b) {
+                if (a.empty() || b.empty())
+                    return false;
+                return stod(docs_info[a][1]) > stod(docs_info[b][1]);
+            });
+        } else if (!queryWordIDs.empty()) {
+            intersection = docs[0];
+        } else {
+            cout << "Words do not exist in the Lexicon" << endl;
+        }
+
+
+        for (auto &document: intersection) {
+            if (!document.empty())
+                wcout << "https://stackoverflow.com/questions/" << document << "\n";
+        }
+        cout << intersection.size() << " results fetched in " << timeTaken.count()/1000.0 <<" seconds\n\n";
     }
+}
+#pragma clang diagnostic pop
 
-    else if(!queryWordIDs.empty()){
-        intersection = docs[0];
+void getLineNums(vector<unordered_map<wstring, int>>& lineNums){
+    vector<wifstream> files;
+    files.reserve(311);
+    for(int i = 0; i < 311; i++){
+        files.emplace_back("../data_structures/f_index/" + to_string(i) + ".txt", ios::in);
     }
+    int i = 0;
 
-    else {
-        cout << "Words do not exist in the Lexicon" << endl;
-    }
-
-
-    for(auto& document : intersection){
-        if(!document.empty())
-            wcout << "https://stackoverflow.com/questions/" << document << "\n";
+    vector<wstring> row;
+    wstring line;
+    wstring cell;
+    for(auto& file : files){
+        int ln = 0;
+        lineNums.emplace_back(unordered_map<wstring, int>());
+        while(getline(file, line)){
+            ln++;
+            row.clear();
+            wstringstream linestream(line);
+            getline(linestream, cell, L',');
+            getline(linestream, cell, L',');
+            if(!lineNums[i].count(cell)) {
+                lineNums[i][cell] = ln;
+            }
+        }
+        file.close();
+        i++;
     }
 }
 
@@ -116,6 +159,7 @@ unordered_map<wstring, vector<wstring>> getDocsInfo() {
         info.push_back(str);
         docs_info[word] = info;
     }
+    doclist.close();
     return docs_info;
 }
 
@@ -130,6 +174,7 @@ unordered_map<wstring, int> getLexicon() {
         lexicon[word] = wordId;
         getline(lexicon_in, word);
     }
+    lexicon_in.close();
     return lexicon;
 }
 
