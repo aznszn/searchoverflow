@@ -1,6 +1,8 @@
 #include "stemminglib/english_stem.h"
 #include <chrono>
 #include <sstream>
+#include <sstream>
+
 #define LINE_SIZE 201
 #define WORDS_IN_BARRELS 500
 
@@ -15,14 +17,24 @@ void getLineNums(vector<unordered_map<wstring, int>> &lineNums);
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"
-int main(){
-    unordered_map<wstring, vector<wstring>> docs_info = getDocsInfo();
-    vector<unordered_map<wstring, int>> lineNums;
+
+struct DOCUMENT{
+    wstring docId;
+    wstring totalWords;
+    bool tagHit;
+    vector<wstring> titleHits;
+    vector<wstring> bodyHits;
+    DOCUMENT(wstring did) : docId(did){};
+};
+
+int main() {
+    unordered_map <wstring, vector<wstring>> docs_info = getDocsInfo();
+    vector <unordered_map<wstring, int>> lineNums;
     getLineNums(lineNums);
     unordered_map<wstring, int> lexicon = getLexicon();
 
-    while(true) {
-        vector<wstring> words = getAndParseQuery();
+    while (true) {
+        vector <wstring> words = getAndParseQuery();
 
         vector<int> queryWordIDs;
         for (auto &w: words) {
@@ -31,41 +43,48 @@ int main(){
             }
         }
 
-        vector<vector<wstring>> docs;
+        vector<vector<pair<wstring,wstring>>> docs;
         using namespace std::chrono;
-        auto start = high_resolution_clock::now();
+
         for (auto &ID: queryWordIDs) {
-            vector<wstring> wordID_docs;
-            vector<wstring> indexFile(0, L"");
+            vector <pair<wstring, wstring>> BIGG_APPLE;
+            //BIGG_APPLE.reserve(20000);
+            //vector<wstring> wordID_docs;
             wstring idstr = to_wstring(ID % WORDS_IN_BARRELS);
             int lineNum = lineNums[(ID / WORDS_IN_BARRELS)][idstr];
 
             wifstream barrel("../data_structures/f_index/" + to_string(ID / WORDS_IN_BARRELS) + ".txt");
-            wstring line;
             barrel.seekg((lineNum - 1) * LINE_SIZE);
 
+            wstring line;
             wstring docID;
             wstring id_in_barrel;
-
+            wstring info;
 
             while (getline(barrel, docID, L',')) {
                 getline(barrel, id_in_barrel, L',');
-                if (id_in_barrel == idstr)
-                    wordID_docs.push_back(docID);
-
-                if (id_in_barrel.size() > idstr.size() || (id_in_barrel.size() == idstr.size() && id_in_barrel > idstr))
+                if (id_in_barrel.size() > idstr.size() || (id_in_barrel.size() == idstr.size() && id_in_barrel > idstr)) {
+                    wcout << id_in_barrel << "\n\n";
                     break;
+                }
+                getline(barrel, info, L' ');
 
+                pair<wstring, wstring> pair1;
+                pair1.first = docID;
+                pair1.second = info;
+                BIGG_APPLE.push_back(pair1);
                 getline(barrel, docID);
             }
-            docs.push_back(wordID_docs);
             barrel.close();
+            docs.push_back(BIGG_APPLE);
         }
 
-        duration<double, std::milli> timeTaken = high_resolution_clock::now() - start;
-
+        //duration<double, std::milli> timeTaken = high_resolution_clock::now() - start;
+        //cout << "\n"<<(high_resolution_clock::now() - start).count()/1000 <<"\n";
         for (auto &item: docs) {
-            sort(item.begin(), item.end());
+            sort(item.begin(), item.end(), [&](const pair<wstring, wstring>& a, const pair<wstring, wstring>& b){
+                return stoi(a.first) < stoi(b.first);
+            });
         }
 
         int max = 0;
@@ -74,43 +93,47 @@ int main(){
                 max = doc.size();
         }
 
-        vector<wstring> intersection(max);
 
-        if (queryWordIDs.size() > 1) {
-            set_intersection(docs[0].begin(), docs[0].end(), docs[1].begin(), docs[1].end(), intersection.begin());
-            for (int i = 2; i < docs.size(); ++i) {
-                vector<wstring> temp(max);
-                set_intersection(intersection.begin(), intersection.end(), docs[i].begin(), docs[i].end(),
-                                 temp.begin());
+        vector<pair<wstring, wstring>> intersection(max);
 
-                temp.erase(remove_if(temp.begin(), temp.end(),
-                                     [](const wstring &s) { return s.empty(); }), temp.end());
+         if (queryWordIDs.size() > 1) {
+             set_intersection(docs[0].begin(), docs[0].end(), docs[1].begin(), docs[1].end(), intersection.begin(), [&](const pair<wstring, wstring>& a, pair<wstring, wstring>& b){
+                 return stoi(a.first) < stoi(b.first);
+             });
+             cout << intersection.size() << "\n";
+             for (int i = 2; i < docs.size(); ++i) {
+                 vector<pair<wstring, wstring>> temp(max);
+                 set_intersection(intersection.begin(), intersection.end(), docs[i].begin(), docs[i].end(),
+                                  temp.begin(),[&](const pair<wstring, wstring>& a, pair<wstring, wstring>& b){
+                             return stoi(a.first) < stoi(b.first);
+                         });
 
-                intersection = temp;
-                temp.clear();
-            }
+                /* temp.erase(remove_if(temp.begin(), temp.end(),
+                                      [](const wstring &s) { return s.empty(); }), temp.end());*/
 
-            intersection.erase(remove_if(intersection.begin(), intersection.end(),
-                                         [](const wstring &s) { return s.empty(); }), intersection.end());
+                 intersection = temp;
+                 temp.clear();
+             }
 
-            sort(intersection.begin(), intersection.end(), [&docs_info](const wstring &a, const wstring &b) {
-                if (a.empty() || b.empty())
-                    return false;
-                return stod(docs_info[a][1]) > stod(docs_info[b][1]);
-            });
-        } else if (!queryWordIDs.empty()) {
-            intersection = docs[0];
-        } else {
-            cout << "Words do not exist in the Lexicon" << endl;
-        }
+             /*intersection.erase(remove_if(intersection.begin(), intersection.end(),
+                                          [](const wstring &s) { return s.empty(); }), intersection.end());
 
+             sort(intersection.begin(), intersection.end(), [&docs_info](const pair<wstring, wstring>& a, const pair<wstring, wstring>& b) {
+                 if (a.first.empty() || b.first.empty())
+                     return false;
+                 return stod(docs_info[a.first][1]) > stod(docs_info[b.first][1]);
+             });*/
+         } else if (!queryWordIDs.empty()) {
+             intersection = docs[0];
+         } else {
+             cout << "Words do not exist in the Lexicon" << endl;
+         }
 
-        for (auto &document: intersection) {
-            if (!document.empty())
-                wcout << "https://stackoverflow.com/questions/" << document << "\n";
-        }
-        cout << intersection.size() << " results fetched in " << timeTaken.count()/1000.0 <<" seconds\n\n";
-    }
+         for (auto &document: intersection) {
+             if (!document.first.empty())
+                 wcout << "https://stackoverflow.com/questions/" << document.first << "\n";
+         }
+     }
 }
 #pragma clang diagnostic pop
 
