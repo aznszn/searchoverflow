@@ -69,7 +69,7 @@ int main() {
             barrel.close();
             docs.push_back(BIGG_APPLE);
         }
-        cout << "\n" << duration_cast<microseconds>(high_resolution_clock::now() - start).count() / 1000 << "ms to fetch results\n";
+        //cout << "\n" << duration_cast<microseconds>(high_resolution_clock::now() - start).count() / 1000 << "ms to fetch results\n";
 
         cout << "Number of words " << docs.size() << endl;
 
@@ -82,6 +82,14 @@ int main() {
         customIntersection(docs);
 
         vector<pair<wstring, double>> docScores;
+
+        int maxi = 0;
+        for(int i = 0; i < docs.size(); i++){
+            if(docs[i].size() > docs[maxi].size())
+                maxi = i;
+        }
+
+        swap(docs[0], docs[maxi]);
 
         for (int i = 0; i < docs[0].size();) {
             wstring x = docs[0][i].first;
