@@ -1,4 +1,5 @@
 #include "stemminglib/english_stem.h"
+#include <filesystem>
 #include <chrono>
 #include <sstream>
 
@@ -6,7 +7,9 @@
 #define WORDS_IN_BARRELS 500
 
 using namespace std;
-using namespace std::chrono;
+using namespace chrono;
+using namespace filesystem;
+
 
 vector<wstring> readNext(wifstream& file);
 vector<vector<wstring>> fetch_table(wifstream& file);
@@ -22,7 +25,9 @@ void customIntersection(vector<vector<pair<wstring,wstring>>> &);
 int main() {
     unordered_map<wstring, vector<wstring>> docs_info = getDocsInfo();
     vector<unordered_map<wstring, int>> lineNums;
+    auto start = high_resolution_clock::now();
     getLineNums(lineNums);
+    cout << "\n" << duration_cast<milliseconds>(high_resolution_clock::now() - start).count()/1000 << " seconds to fetch results\n";
     unordered_map<wstring, int> lexicon = getLexicon();
 
     while (true) {
@@ -37,7 +42,7 @@ int main() {
             }
         }
 
-        auto start = high_resolution_clock::now();
+
 
         for (auto &ID: queryWordIDs) {
             vector<pair<wstring, wstring>> BIGG_APPLE;
@@ -69,9 +74,9 @@ int main() {
             barrel.close();
             docs.push_back(BIGG_APPLE);
         }
-        //cout << "\n" << duration_cast<microseconds>(high_resolution_clock::now() - start).count() / 1000 << "ms to fetch results\n";
 
-        cout << "Number of words " << docs.size() << endl;
+
+        //cout << "Number of words " << docs.size() << endl;
 
         for (auto &item: docs) {
             sort(item.begin(), item.end(), [&](const pair<wstring, wstring> &a, const pair<wstring, wstring> &b) {
@@ -112,20 +117,21 @@ int main() {
                 getline(linestream, wordID, L',');
                 wstring imp;
                 getline(linestream, imp, L',');
-                getline(linestream, imp, L',');
-                wordIdImpPair.first = wordID;
                 wordIdImpPair.second = stoi(imp);
+                wordIdImpPair.first = wordID;
+                getline(linestream, imp, L',');
                 wstring cell;
                 while (getline(linestream, cell, L',')) {
                     int pos = stoi(cell);
                     hitPos.push_back(pos);
                     posWordMap[pos] = wordIdImpPair;
                 }
-                std::sort(hitPos.begin(), hitPos.end());
-                for (int index = 1; index < hitPos.size() - 1; ++index) {
-                    if (((hitPos[index] - hitPos[index - 1]) > 13) && ((hitPos[index + 1] - hitPos[index]) > 13)) {
-                        hitPos.erase(hitPos.begin() + index);
-                    }
+
+            }
+            std::sort(hitPos.begin(), hitPos.end());
+            for (int index = 1; index < hitPos.size() - 1; ++index) {
+                if (((hitPos[index] - hitPos[index - 1]) > 13) && ((hitPos[index + 1] - hitPos[index]) > 13)) {
+                    hitPos.erase(hitPos.begin() + index);
                 }
             }
 
@@ -145,8 +151,8 @@ int main() {
                         score += hitPos[j] - hitPos[j - 1];
                     }
                     if (bunchIDs.size() > 1) {
-                        score = ((double) bunchIDs.size()) / score;
-                        score /= (double) queryWordIDs.size();
+                        score = ((double) bunchIDs.size() - 1) / score;
+                        score *= ((double) bunchIDs.size())/(double)queryWordIDs.size();
                         score *= posWordMap[hitPos[k - 1]].second;
                         cumscore += score;
                     }
@@ -171,9 +177,16 @@ int main() {
 #pragma clang diagnostic pop
 
 void getLineNums(vector<unordered_map<wstring, int>>& lineNums){
+    auto dirIter = std::filesystem::directory_iterator(current_path().string() + "/../data_structures/f_index");
+    int fileCount = count_if(
+            begin(dirIter),
+            end(dirIter),
+            [](auto& entry) { return entry.is_regular_file(); }
+    );
+
     vector<wifstream> files;
-    files.reserve(311);
-    for(int i = 0; i < 311; i++){
+    files.reserve(fileCount);
+    for(int i = 0; i < fileCount; i++){
         files.emplace_back("../data_structures/f_index/" + to_string(i) + ".txt", ios::in);
     }
     int i = 0;
