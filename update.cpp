@@ -1,7 +1,11 @@
-#include "stemminglib/english_stem.h"
+#include <iostream>
+#include "bits/stdc++.h"
 #include "utils/fetch_table.h"
 #include "utils/parseHTML.h"
 #include "inverted_index.h"
+#include "stemminglib/english_stem.h"
+using namespace std;
+using namespace filesystem;
 
 #define WORDS_IN_FILE 500
 #define MAX_WORD_LEN 17
@@ -15,8 +19,8 @@
 #define ANS_PID_COL 3
 #define SCORE_COL 4
 
-using namespace std;
-using namespace filesystem;
+unordered_map<wstring, vector<wstring>> getDocsInfo();
+unordered_map<wstring, int> getLexicon(int &);
 
 void buildLexicon(unordered_map<wstring, int> &, vector<vector<wstring>>, vector<vector<wstring>>, vector<vector<wstring>>, int&, unordered_map<wstring, int> &);
 void buildForwardIndex(unordered_map<wstring, int> &, unordered_map<wstring, int> &, int, const wstring&, unordered_map<wstring, wstring> &);
@@ -27,71 +31,115 @@ void utilLexiconForTags(unordered_map<wstring, int> &, wstringstream &, int &, v
 void buildForwardIndexTags(unordered_map<wstring, int> &, int, wstring &, vector<wstring> &);
 void readStopWords(unordered_map<wstring, int> &);
 
-
-//TODO: remove global
 auto array_fi = new vector<wofstream>;
+
 int main() {
-    {
-        path x(current_path().string() + "/../dataset/questions_100k.csv");
-        path y(current_path().string() + "/../dataset/answers_100k.csv");
-        path z(current_path().string() + "/../dataset/tags_100k.csv");
+    //get all barrels and total files count
+    auto dirIter = std::filesystem::directory_iterator(current_path().string() + "/../data_structures/f_index");
+    int fileCount = count_if(
+            begin(dirIter),
+            end(dirIter),
+            [](auto& entry) { return entry.is_regular_file(); }
+    );
 
-        wofstream metaData("../data_structures/metadata.txt");
-        metaData << file_size(x) << endl << file_size(y) << endl << file_size(z);
-        metaData.close();
-
-        unordered_map<wstring, int> stopWordsLexicon;
-        readStopWords(stopWordsLexicon);
-        cout << "Stop Words Lexicon made" << endl;
-
-        unordered_map<wstring, int> lexicon;
-        wofstream lexicon_file("../data_structures/lexicon.txt", ios::out);
-
-        int i = 0;
-
-        wifstream questions("../dataset/questions_100k.csv");
-        vector<vector<wstring>> questions_table = fetch_table(questions);
-        cout << "questions table fetched" << endl;
-
-        wifstream answers("../dataset/answers_100k.csv");
-        vector<vector<wstring>> answers_table = fetch_table(answers);
-        cout << "answers table fetched" << endl;
-
-        wifstream tags("../dataset/tags_100k.csv");
-        vector<vector<wstring>> tags_table = fetch_table(tags);
-        cout << "tags table fetched" << endl;
-        parseHTML(questions_table, QBODY_COL);
-        cout << "questions HTML parsed" << endl;
-        parseHTML(answers_table, ANSBODY_COL);
-        cout << "answers HTML parsed" << endl;
-
-        buildLexicon(lexicon, questions_table, answers_table, tags_table, i, stopWordsLexicon);
-
-        for (auto &x: *array_fi)
-            x.close();
-
-        cout << (*array_fi).size() << endl;
-
-        delete array_fi;
-
-        //writing lexicon to file
-        for (auto &x: lexicon)
-            lexicon_file << x.first << L"," << x.second << "\n";
-
-        cout << "Lexicon file created" << endl;
-
-        lexicon_file.close();
+    array_fi->reserve(fileCount);
+    for(int i = 0; i < fileCount; i++){
+        array_fi->emplace_back("../data_structures/f_index/" + to_string(i) + ".txt", ios::app);
     }
+
+    //stop words
+    unordered_map<wstring, int> stopWordsLexicon;
+    readStopWords(stopWordsLexicon);
+    cout << "Stop Words Lexicon made" << endl;
+
+
+    int maxId = INT_MIN;
+    vector<wstring> newRecords;
+    unordered_map<wstring, vector<wstring>> docsInfo = getDocsInfo();
+    unordered_map<wstring, int> lexicon = getLexicon(maxId);
+    maxId++;
+
+    cout << maxId << endl;
+
+    //open all dataset
+    wifstream questions("../dataset/questions_100k.csv");
+    wifstream answers("../dataset/answers_100k.csv");
+    wifstream tags("../dataset/tags_100k.csv");
+
+    //open metadata file
+    wifstream metaData("../data_structures/metadata.txt");
+    wstring questionsSize;
+    getline(metaData, questionsSize);
+    wstring answersSize;
+    getline(metaData, answersSize);
+    wstring tagsSize;
+    getline(metaData, tagsSize);
+    metaData.close();
+
+    //seek to new records
+    questions.seekg(stoi(questionsSize), ios::beg);
+    answers.seekg(stoi(answersSize), ios::beg);
+    tags.seekg(stoi(tagsSize), ios::beg);
+
+    //get new records
+    vector<vector<wstring>> questions_table = fetch_table(questions);
+    cout << "questions table fetched" << endl;
+
+    //get new records
+    vector<vector<wstring>> answers_table = fetch_table(answers);
+    cout << "answers table fetched" << endl;
+
+    //get new records
+    vector<vector<wstring>> tags_table = fetch_table(tags);
+    cout << "tags table fetched" << endl;
+
+    //parse table
+    parseHTML(questions_table, QBODY_COL);
+    cout << "questions HTML parsed" << endl;
+    parseHTML(answers_table, ANSBODY_COL);
+    cout << "answers HTML parsed" << endl;
+
+    //build lexicon
+    buildLexicon(lexicon, questions_table, answers_table, tags_table, maxId, stopWordsLexicon);
+
+    //close all barrels
+    for (auto &x: *array_fi)
+        x.close();
+
+    cout << (*array_fi).size() << endl;
+
+    delete array_fi;
+
+    //writing lexicon to file
+    wofstream lexicon_file("../data_structures/lexicon.txt", ios::out);
+    for (auto &x: lexicon)
+        lexicon_file << x.first << L"," << x.second << "\n";
+
+    cout << "Lexicon file created" << endl;
+
+    lexicon_file.close();
 
     buildInverted();
     cout << "Built inverted" << endl;
+
+    questions.close();
+    answers.close();
+    tags.close();
+
+    //update metaData File
+    path x(current_path().string() + "/../dataset/questions_100k.csv");
+    path y(current_path().string() + "/../dataset/answers_100k.csv");
+    path z(current_path().string() + "/../dataset/tags_100k.csv");
+    wofstream updateMetaData("../data_structures/metadata.txt");
+    updateMetaData << file_size(x) << endl << file_size(y) << endl << file_size(z);
+    updateMetaData.close();
 }
 
 void buildLexicon(unordered_map<wstring, int> &lexicon, vector<vector<wstring>> questions, vector<vector<wstring>> answers, vector<vector<wstring>> tags, int& i, unordered_map<wstring, int> &stopWordsLexicon) {
     int j = 0; // for questions counter
     int k = 0; // for answers counter
     int t = 0; // for tags counter
-    wofstream docList("../data_structures/docList.txt", ios::out);
+    wofstream docList("../data_structures/docList.txt", ios::app);
 
     while (j < questions.size()) {
         int overallCharacterCount = 0;
@@ -169,7 +217,7 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
                         if (i % (WORDS_IN_FILE) == 0) {
                             array_fi->push_back(wofstream(
                                     "../data_structures/f_index/" + to_string(i / (WORDS_IN_FILE )) + ".txt",
-                                    ios::out));
+                                    ios::app));
                         }
                         lexicon[word] = i++;
                         storesCount[word] = 1;
@@ -203,7 +251,7 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
             if (i % (WORDS_IN_FILE) == 0) {
                 array_fi->push_back(wofstream(
                         "../data_structures/f_index/" + to_string(i / (WORDS_IN_FILE)) + ".txt",
-                        ios::out));
+                        ios::app));
             }
             lexicon[word] = i++;
             storesCount[word] = 1;
@@ -252,7 +300,7 @@ void utilLexiconForTags(unordered_map<wstring, int> &lexicon, wstringstream &row
                         if (i % (WORDS_IN_FILE) == 0) {
                             array_fi->push_back(wofstream(
                                     "../data_structures/f_index/" + to_string(i / (WORDS_IN_FILE)) + ".txt",
-                                    ios::out));
+                                    ios::app));
                         }
                         lexicon[word] = i++;
                         wordsInTags.push_back(word);
@@ -268,7 +316,7 @@ void utilLexiconForTags(unordered_map<wstring, int> &lexicon, wstringstream &row
             if (i % (WORDS_IN_FILE) == 0) {
                 array_fi->push_back(wofstream(
                         "../data_structures/f_index/" + to_string(i / (WORDS_IN_FILE)) + ".txt",
-                        ios::out));
+                        ios::app));
             }
             lexicon[word] = i++;
             wordsInTags.push_back(word);
@@ -313,11 +361,6 @@ inline int getTag(int &t, vector<vector<wstring>>& tags, const wstring& id){
     }
 }
 
-// documentID, numberOfWords, question score, answers score max, number of answers
-// answers score max 46%
-// questions score 33%
-// number of answers 21%
-
 void readStopWords(unordered_map<wstring, int> &map){
     wstring word;
     stemming::english_stem<> stem;
@@ -327,4 +370,40 @@ void readStopWords(unordered_map<wstring, int> &map){
         stem(word);
         map[word] = 0;
     }
+}
+
+unordered_map<wstring, vector<wstring>> getDocsInfo() {
+    unordered_map<wstring, vector<wstring>> docs_info;
+    wifstream doclist("../data_structures/doclist.txt");
+    docs_info.reserve(100000);
+    wstring word;
+    wstring str;
+    getline(doclist, word);
+    word.clear();
+    while(getline(doclist, word, L',')){
+        vector<wstring> info;
+        getline(doclist, str, L',');
+        info.push_back(str);
+        getline(doclist, str);
+        info.push_back(str);
+        docs_info[word] = info;
+    }
+    doclist.close();
+    return docs_info;
+}
+
+unordered_map<wstring, int> getLexicon(int &maxId) {
+    wifstream lexicon_in("../data_structures/lexicon.txt");
+    unordered_map<wstring, int> lexicon;
+    wstring word;
+    int wordId;
+    lexicon.reserve(156000);
+    while(getline(lexicon_in, word, L',')){
+        lexicon_in >> wordId;
+        if (wordId > maxId){maxId = wordId;}
+        lexicon[word] = wordId;
+        getline(lexicon_in, word);
+    }
+    lexicon_in.close();
+    return lexicon;
 }

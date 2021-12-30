@@ -200,7 +200,7 @@ int main() {
 
         cout << "\n" << duration_cast<milliseconds>(high_resolution_clock::now() - start).count()/1000.0 << " seconds to fetch " << docScores.size() << " results\n";
         for (auto &item: docScores) {
-            wcout << "https://stackoverflow.com/questions/" << item.first << "\t" << "score " << item.second << "\n";
+            wcout << "https://stackoverflow.com/questions/" << item.first << " " << "score " << item.second << "\n";
         }
     }
 }
@@ -225,8 +225,9 @@ void getLineNums(vector<unordered_map<wstring, int>>& lineNums){
     wstring line;
     wstring cell;
     for(auto& file : files){
-        int ln = 0;
+        int ln = 1;
         lineNums.emplace_back(unordered_map<wstring, int>());
+        getline(file, line); //new
         while(getline(file, line)){
             ln++;
             row.clear();

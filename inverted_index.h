@@ -2,11 +2,12 @@
 
 void buildInverted() {
     using namespace std::filesystem;
-    string path = R"(D:\searchoverflow\data_structures\f_index)";
+    string path = R"(D:\Current_Git_Repos\searchoverflow\data_structures\f_index)";
 
     for(const auto& entry : directory_iterator(path)) {
         wcout << entry.path() << endl;
         wifstream curr(entry.path());
+
         vector<vector<wstring>> f_index_file = fetch_table(curr);
 
         auto sorted = vector<vector<wstring>>(f_index_file.size());
@@ -22,11 +23,16 @@ void buildInverted() {
             sorted.at(elem_array[stoi(i[1])]-- - 1) = i;
 
         wofstream currOut(entry.path(), ios::out);
+        currOut << setw(199) << " ";
+        currOut << "\n";
         for(auto& row: sorted){
             for(auto& column : row)
                 currOut << column << ",";
             currOut.seekp(-1, ios::cur);
             currOut << "\n";
         }
+        currOut.close();
+        resize_file(entry.path(), file_size(entry.path()) - 2);
     }
 }
+
