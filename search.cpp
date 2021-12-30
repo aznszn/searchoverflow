@@ -19,15 +19,18 @@ unordered_map<wstring, vector<wstring>> getDocsInfo();
 void getLineNums(vector<unordered_map<wstring, int>> &lineNums);
 
 void customIntersection(vector<vector<pair<wstring,wstring>>> &);
+void makeCombiUtil(vector<vector<int>>&, vector<int>&, int, int, int);
+
+vector<vector<int> > makeCombi(int, int);
+
+
 #pragma clang diagnostic push
 
 #pragma ide diagnostic ignored "EndlessLoop"
 int main() {
     unordered_map<wstring, vector<wstring>> docs_info = getDocsInfo();
     vector<unordered_map<wstring, int>> lineNums;
-    auto start = high_resolution_clock::now();
     getLineNums(lineNums);
-    cout << "\n" << duration_cast<milliseconds>(high_resolution_clock::now() - start).count()/1000 << " seconds to fetch results\n";
     unordered_map<wstring, int> lexicon = getLexicon();
 
     while (true) {
@@ -42,8 +45,12 @@ int main() {
             }
         }
 
+        if (!queryWordIDs.size()){
+            cout << "Words do not exist in the lexicon" << endl;
+            continue;
+        }
 
-
+        auto start = high_resolution_clock::now();
         for (auto &ID: queryWordIDs) {
             vector<pair<wstring, wstring>> BIGG_APPLE;
             wstring idstr = to_wstring(ID % WORDS_IN_BARRELS);
@@ -84,7 +91,30 @@ int main() {
             });
         }
 
+        vector<vector<pair<wstring, wstring>>> beforeIntersectDocs = docs;
         customIntersection(docs);
+
+        if(docs[0].size() == 0 && queryWordIDs.size() > 3){
+            cout << "No intersection found" << endl;
+            vector<vector<int>> combinations = makeCombi(queryWordIDs.size(), queryWordIDs.size()-2);
+
+            int maxInDocsComb = INT_MIN;
+            for (int i = 0; i < combinations.size(); ++i){
+                vector<vector<pair<wstring, wstring>>> docsTemp;
+                for (int j = 0; j < combinations[i].size(); ++j){
+                    docsTemp.push_back(beforeIntersectDocs[j]);
+                }
+                customIntersection(docsTemp);
+                int sum = 0;
+                for (int k = 0; k < docsTemp.size(); ++k){
+                    sum += docsTemp[k].size();
+                }
+                if (docsTemp[0].size() != 0 && sum > maxInDocsComb){
+                    docs = docsTemp;
+                    maxInDocsComb = sum;
+                }
+            }
+        }
 
         vector<pair<wstring, double>> docScores;
 
@@ -164,14 +194,14 @@ int main() {
             docScores.emplace_back(docs[0][i - 1].first, cumscore);
         }
 
-        std::sort(docScores.begin(), docScores.end(), [&](const pair<wstring, int> &a, const pair<wstring, int> &b) {
+        std::sort(docScores.begin(), docScores.end(), [&](const pair<wstring, double> &a, const pair<wstring, double> &b) {
             return (a.second > b.second);
         });
 
+        cout << "\n" << duration_cast<milliseconds>(high_resolution_clock::now() - start).count()/1000.0 << " seconds to fetch " << docScores.size() << " results\n";
         for (auto &item: docScores) {
-            wcout << "https://stackoverflow.com/questions/" << item.first << "\n";
+            wcout << "https://stackoverflow.com/questions/" << item.first << "\t" << "score " << item.second << "\n";
         }
-
     }
 }
 #pragma clang diagnostic pop
@@ -305,5 +335,31 @@ void customIntersection(vector<vector<pair<wstring,wstring>>> &documents){
     for (int i = 0; i < documents.size(); ++i){
         documents[i].erase(remove_if(documents[i].begin(), documents[i].end(),
                                      [&commonDocIDs](const pair<wstring, wstring> &s) { return find(commonDocIDs.begin(), commonDocIDs.end(), s.first) == commonDocIDs.end(); }), documents[i].end());
+    }
+}
+
+vector<vector<int>> makeCombi(int n, int k){
+    vector<vector<int> > ans;
+    vector<int> tmp;
+    makeCombiUtil(ans, tmp, n, 1, k);
+    return ans;
+}
+
+void makeCombiUtil(vector<vector<int> >& ans, vector<int>& tmp, int n, int left, int k){
+    // Pushing this vector to a vector of vector
+    if (k == 0) {
+        ans.push_back(tmp);
+        return;
+    }
+    // i iterates from left to n. First time
+    // left will be 1
+    for (int i = left; i <= n; ++i)
+    {
+        tmp.push_back(i);
+        makeCombiUtil(ans, tmp, n, i + 1, k - 1);
+
+        // Popping out last inserted element
+        // from the vector
+        tmp.pop_back();
     }
 }
