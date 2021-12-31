@@ -30,12 +30,13 @@ int getTag(int &, vector<vector<wstring>>&, const wstring&);
 void utilLexiconForTags(unordered_map<wstring, int> &, wstringstream &, int &, vector<wstring> &, unordered_map<wstring,int>&);
 void buildForwardIndexTags(unordered_map<wstring, int> &, int, wstring &, vector<wstring> &);
 void readStopWords(unordered_map<wstring, int> &);
+void getLineNums();
 
 auto array_fi = new vector<wofstream>;
 
 int main() {
     //get all barrels and total files count
-    auto dirIter = std::filesystem::directory_iterator(current_path().string() + "/../data_structures/f_index");
+    auto dirIter = std::filesystem::directory_iterator(current_path().string() + "/../data_structures/barrels");
     int fileCount = count_if(
             begin(dirIter),
             end(dirIter),
@@ -44,7 +45,7 @@ int main() {
 
     array_fi->reserve(fileCount);
     for(int i = 0; i < fileCount; i++){
-        array_fi->emplace_back("../data_structures/f_index/" + to_string(i) + ".txt", ios::app);
+        array_fi->emplace_back("../data_structures/barrels/" + to_string(i) + ".txt", ios::app);
     }
 
     //stop words
@@ -94,10 +95,10 @@ int main() {
     cout << "tags table fetched" << endl;
 
     //parse table
-    parseHTML(questions_table, QBODY_COL);
-    cout << "questions HTML parsed" << endl;
-    parseHTML(answers_table, ANSBODY_COL);
-    cout << "answers HTML parsed" << endl;
+    //parseHTML(questions_table, QBODY_COL);
+    //cout << "questions HTML parsed" << endl;
+    //parseHTML(answers_table, ANSBODY_COL);
+    //cout << "answers HTML parsed" << endl;
 
     //build lexicon
     buildLexicon(lexicon, questions_table, answers_table, tags_table, maxId, stopWordsLexicon);
@@ -133,6 +134,8 @@ int main() {
     wofstream updateMetaData("../data_structures/metadata.txt");
     updateMetaData << file_size(x) << endl << file_size(y) << endl << file_size(z);
     updateMetaData.close();
+
+    getLineNums();
 }
 
 void buildLexicon(unordered_map<wstring, int> &lexicon, vector<vector<wstring>> questions, vector<vector<wstring>> answers, vector<vector<wstring>> tags, int& i, unordered_map<wstring, int> &stopWordsLexicon) {
@@ -216,7 +219,7 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
                     if (word.length() <= MAX_WORD_LEN && !lexicon.count(word) && !stopWordsLexicon.count(word)) {
                         if (i % (WORDS_IN_FILE) == 0) {
                             array_fi->push_back(wofstream(
-                                    "../data_structures/f_index/" + to_string(i / (WORDS_IN_FILE )) + ".txt",
+                                    "../data_structures/barrels/" + to_string(i / (WORDS_IN_FILE )) + ".txt",
                                     ios::app));
                         }
                         lexicon[word] = i++;
@@ -250,7 +253,7 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
         if (word.length() <= MAX_WORD_LEN && !lexicon.count(word) && !stopWordsLexicon.count(word)) {
             if (i % (WORDS_IN_FILE) == 0) {
                 array_fi->push_back(wofstream(
-                        "../data_structures/f_index/" + to_string(i / (WORDS_IN_FILE)) + ".txt",
+                        "../data_structures/barrels/" + to_string(i / (WORDS_IN_FILE)) + ".txt",
                         ios::app));
             }
             lexicon[word] = i++;
@@ -299,7 +302,7 @@ void utilLexiconForTags(unordered_map<wstring, int> &lexicon, wstringstream &row
                     if (word.length() <= MAX_WORD_LEN && !lexicon.count(word) && !stopWordsLexicon.count(word)) {
                         if (i % (WORDS_IN_FILE) == 0) {
                             array_fi->push_back(wofstream(
-                                    "../data_structures/f_index/" + to_string(i / (WORDS_IN_FILE)) + ".txt",
+                                    "../data_structures/barrels/" + to_string(i / (WORDS_IN_FILE)) + ".txt",
                                     ios::app));
                         }
                         lexicon[word] = i++;
@@ -315,7 +318,7 @@ void utilLexiconForTags(unordered_map<wstring, int> &lexicon, wstringstream &row
         if (word.length() <= MAX_WORD_LEN && !lexicon.count(word) && !stopWordsLexicon.count(word)) {
             if (i % (WORDS_IN_FILE) == 0) {
                 array_fi->push_back(wofstream(
-                        "../data_structures/f_index/" + to_string(i / (WORDS_IN_FILE)) + ".txt",
+                        "../data_structures/barrels/" + to_string(i / (WORDS_IN_FILE)) + ".txt",
                         ios::app));
             }
             lexicon[word] = i++;
@@ -406,4 +409,45 @@ unordered_map<wstring, int> getLexicon(int &maxId) {
     }
     lexicon_in.close();
     return lexicon;
+}
+
+void getLineNums(){
+    wofstream lineNumberFile("../data_structures/lineNumbers.txt", ios::out);
+
+    auto dirIter = std::filesystem::directory_iterator(current_path().string() + "/../data_structures/barrels");
+    int fileCount = count_if(
+            begin(dirIter),
+            end(dirIter),
+            [](auto& entry) { return entry.is_regular_file(); }
+    );
+
+    vector<wifstream> files;
+    files.reserve(fileCount);
+    for(int i = 0; i < fileCount; i++){
+        files.emplace_back("../data_structures/barrels/" + to_string(i) + ".txt", ios::in);
+    }
+    int i = 0;
+
+    vector<wstring> row;
+    wstring line;
+    for(auto& file : files){
+        wstring cell;
+        wstring temp;
+        int ln = 1;
+        getline(file, line); //new
+        while(getline(file, line)){
+            ln++;
+            row.clear();
+            wstringstream linestream(line);
+            getline(linestream, cell, L',');
+            getline(linestream, cell, L',');
+            if(temp != cell) {
+                lineNumberFile << cell << L',' << ln << '\n';
+            }
+            temp = cell;
+        }
+        file.close();
+        i++;
+    }
+    lineNumberFile.close();
 }

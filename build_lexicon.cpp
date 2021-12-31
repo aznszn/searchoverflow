@@ -26,6 +26,7 @@ int getTag(int &, vector<vector<wstring>>&, const wstring&);
 void utilLexiconForTags(unordered_map<wstring, int> &, wstringstream &, int &, vector<wstring> &, unordered_map<wstring,int>&);
 void buildForwardIndexTags(unordered_map<wstring, int> &, int, wstring &, vector<wstring> &);
 void readStopWords(unordered_map<wstring, int> &);
+void getLineNums();
 
 
 //TODO: remove global
@@ -60,10 +61,10 @@ int main() {
         wifstream tags("../dataset/tags_100k.csv");
         vector<vector<wstring>> tags_table = fetch_table(tags);
         cout << "tags table fetched" << endl;
-        parseHTML(questions_table, QBODY_COL);
-        cout << "questions HTML parsed" << endl;
-        parseHTML(answers_table, ANSBODY_COL);
-        cout << "answers HTML parsed" << endl;
+        //parseHTML(questions_table, QBODY_COL);
+        //cout << "questions HTML parsed" << endl;
+        //parseHTML(answers_table, ANSBODY_COL);
+        //cout << "answers HTML parsed" << endl;
 
         buildLexicon(lexicon, questions_table, answers_table, tags_table, i, stopWordsLexicon);
 
@@ -85,6 +86,9 @@ int main() {
 
     buildInverted();
     cout << "Built inverted" << endl;
+
+    getLineNums();
+    cout << "Got Line Num" << endl;
 }
 
 void buildLexicon(unordered_map<wstring, int> &lexicon, vector<vector<wstring>> questions, vector<vector<wstring>> answers, vector<vector<wstring>> tags, int& i, unordered_map<wstring, int> &stopWordsLexicon) {
@@ -168,7 +172,7 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
                     if (word.length() <= MAX_WORD_LEN && !lexicon.count(word) && !stopWordsLexicon.count(word)) {
                         if (i % (WORDS_IN_FILE) == 0) {
                             array_fi->push_back(wofstream(
-                                    "../data_structures/f_index/" + to_string(i / (WORDS_IN_FILE )) + ".txt",
+                                    "../data_structures/barrels/" + to_string(i / (WORDS_IN_FILE )) + ".txt",
                                     ios::out));
                         }
                         lexicon[word] = i++;
@@ -202,7 +206,7 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
         if (word.length() <= MAX_WORD_LEN && !lexicon.count(word) && !stopWordsLexicon.count(word)) {
             if (i % (WORDS_IN_FILE) == 0) {
                 array_fi->push_back(wofstream(
-                        "../data_structures/f_index/" + to_string(i / (WORDS_IN_FILE)) + ".txt",
+                        "../data_structures/barrels/" + to_string(i / (WORDS_IN_FILE)) + ".txt",
                         ios::out));
             }
             lexicon[word] = i++;
@@ -251,7 +255,7 @@ void utilLexiconForTags(unordered_map<wstring, int> &lexicon, wstringstream &row
                     if (word.length() <= MAX_WORD_LEN && !lexicon.count(word) && !stopWordsLexicon.count(word)) {
                         if (i % (WORDS_IN_FILE) == 0) {
                             array_fi->push_back(wofstream(
-                                    "../data_structures/f_index/" + to_string(i / (WORDS_IN_FILE)) + ".txt",
+                                    "../data_structures/barrels/" + to_string(i / (WORDS_IN_FILE)) + ".txt",
                                     ios::out));
                         }
                         lexicon[word] = i++;
@@ -267,7 +271,7 @@ void utilLexiconForTags(unordered_map<wstring, int> &lexicon, wstringstream &row
         if (word.length() <= MAX_WORD_LEN && !lexicon.count(word) && !stopWordsLexicon.count(word)) {
             if (i % (WORDS_IN_FILE) == 0) {
                 array_fi->push_back(wofstream(
-                        "../data_structures/f_index/" + to_string(i / (WORDS_IN_FILE)) + ".txt",
+                        "../data_structures/barrels/" + to_string(i / (WORDS_IN_FILE)) + ".txt",
                         ios::out));
             }
             lexicon[word] = i++;
@@ -327,4 +331,45 @@ void readStopWords(unordered_map<wstring, int> &map){
         stem(word);
         map[word] = 0;
     }
+}
+
+void getLineNums(){
+    wofstream lineNumberFile("../data_structures/lineNumbers.txt", ios::out);
+
+    auto dirIter = std::filesystem::directory_iterator(current_path().string() + "/../data_structures/barrels");
+    int fileCount = count_if(
+            begin(dirIter),
+            end(dirIter),
+            [](auto& entry) { return entry.is_regular_file(); }
+    );
+
+    vector<wifstream> files;
+    files.reserve(fileCount);
+    for(int i = 0; i < fileCount; i++){
+        files.emplace_back("../data_structures/barrels/" + to_string(i) + ".txt", ios::in);
+    }
+    int i = 0;
+
+    vector<wstring> row;
+    wstring line;
+    for(auto& file : files){
+        wstring cell;
+        wstring temp;
+        int ln = 1;
+        getline(file, line); //new
+        while(getline(file, line)){
+            ln++;
+            row.clear();
+            wstringstream linestream(line);
+            getline(linestream, cell, L',');
+            getline(linestream, cell, L',');
+            if(temp != cell) {
+                lineNumberFile << cell << L',' << ln << '\n';
+            }
+            temp = cell;
+        }
+        file.close();
+        i++;
+    }
+    lineNumberFile.close();
 }

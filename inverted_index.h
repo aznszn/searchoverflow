@@ -2,9 +2,8 @@
 
 void buildInverted() {
     using namespace std::filesystem;
-    string path = R"(D:\Current_Git_Repos\searchoverflow\data_structures\f_index)";
 
-    for(const auto& entry : directory_iterator(path)) {
+    for(const auto& entry : directory_iterator(current_path().string() + "/../data_structures/barrels")) {
         wcout << entry.path() << endl;
         wifstream curr(entry.path());
 
@@ -35,4 +34,3 @@ void buildInverted() {
         resize_file(entry.path(), file_size(entry.path()) - 2);
     }
 }
-

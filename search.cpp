@@ -16,7 +16,7 @@ vector<vector<wstring>> fetch_table(wifstream& file);
 vector<wstring> getAndParseQuery();
 unordered_map<wstring, int> getLexicon();
 unordered_map<wstring, vector<wstring>> getDocsInfo();
-vector<unordered_map<wstring, int>> getLineNums();
+vector<unordered_map<wstring, int>> getLineNumbers();
 void customIntersection(vector<vector<pair<wstring,wstring>>> &);
 void makeCombiUtil(vector<vector<int>>&, vector<int>&, int, int, int);
 vector<vector<int> > makeCombi(int, int);
@@ -28,7 +28,7 @@ double getCumScore(const vector<int> &queryWordIDs, unordered_map<int, pair<wstr
 #pragma ide diagnostic ignored "EndlessLoop"
 int main() {
     unordered_map<wstring, vector<wstring>> docs_info = getDocsInfo();  //doclis
-    vector<unordered_map<wstring, int>> lineNums = getLineNums(); // map that tells you where each word starts in the barrels
+    vector<unordered_map<wstring, int>> lineNums = getLineNumbers(); // map that tells you where each word starts in the barrels
     unordered_map<wstring, int> lexicon = getLexicon();
 
     while (true) {
@@ -54,7 +54,7 @@ int main() {
             wstring idstr = to_wstring(ID % WORDS_IN_BARRELS);
             int lineNum = lineNums[(ID / WORDS_IN_BARRELS)][idstr];
 
-            wifstream barrel("../data_structures/f_index/" + to_string(ID / WORDS_IN_BARRELS) + ".txt");
+            wifstream barrel("../data_structures/barrels/" + to_string(ID / WORDS_IN_BARRELS) + ".txt");
             barrel.seekg((lineNum - 1) * LINE_SIZE);
 
             wstring docID;
@@ -139,15 +139,13 @@ int main() {
 
             for (auto &hitlist: hitsVector) {
                 wstringstream linestream(hitlist);
-
                 wstring wordID;
                 wstring imp;
-
                 getline(linestream, wordID, L',');
                 getline(linestream, imp, L',');
-                getline(linestream, imp, L',');
-
                 wstring cell;
+                getline(linestream, cell, L',');
+
                 while (getline(linestream, cell, L',')) {
                     int pos = stoi(cell);
                     hitPos.push_back(pos);
@@ -211,46 +209,6 @@ double getCumScore(const vector<int> &queryWordIDs, unordered_map<int, pair<wstr
 }
 
 #pragma clang diagnostic pop
-
-vector<unordered_map<wstring, int>> getLineNums(){
-    vector<unordered_map<wstring, int>> lineNums;
-    auto dirIter = std::filesystem::directory_iterator(current_path().string() + "/../data_structures/f_index");
-    int fileCount = count_if(
-            begin(dirIter),
-            end(dirIter),
-            [](auto& entry) { return entry.is_regular_file(); }
-    );
-
-    vector<wifstream> files;
-    files.reserve(fileCount);
-    for(int i = 0; i < fileCount; i++){
-        files.emplace_back("../data_structures/f_index/" + to_string(i) + ".txt", ios::in);
-    }
-    int i = 0;
-
-    vector<wstring> row;
-    wstring line;
-    wstring cell;
-    for(auto& file : files){
-        int ln = 1;
-        lineNums.emplace_back(unordered_map<wstring, int>());
-        getline(file, line); //new
-        while(getline(file, line)){
-            ln++;
-            row.clear();
-            wstringstream linestream(line);
-            getline(linestream, cell, L',');
-            getline(linestream, cell, L',');
-            if(!lineNums[i].count(cell)) {
-                lineNums[i][cell] = ln;
-            }
-        }
-        file.close();
-        i++;
-    }
-
-    return lineNums;
-}
 
 unordered_map<wstring, vector<wstring>> getDocsInfo() {
     unordered_map<wstring, vector<wstring>> docs_info;
@@ -372,4 +330,35 @@ void makeCombiUtil(vector<vector<int> >& ans, vector<int>& tmp, int n, int left,
         // from the vector
         tmp.pop_back();
     }
+}
+
+vector<unordered_map<wstring, int>> getLineNumbers(){
+    vector<unordered_map<wstring, int>> lineNums;
+    wifstream lineNumberFile("../data_structures/lineNumbers.txt");
+    wstring line;
+    wstring wordId;
+    wstring lineCount;
+
+    auto dirIter = std::filesystem::directory_iterator(current_path().string() + "/../data_structures/barrels");
+    int fileCount = count_if(
+            begin(dirIter),
+            end(dirIter),
+            [](auto& entry) { return entry.is_regular_file(); }
+    );
+
+    for (int k = 0; k < fileCount; ++k){
+        int i = 0;
+        lineNums.emplace_back(unordered_map<wstring, int>());
+        while(getline(lineNumberFile, line)){
+            if (!line.empty()){
+                wstringstream linestream(line);
+                getline(linestream, wordId, L',');
+                getline(linestream, lineCount, L',');
+                lineNums[k][wordId] = stoi(lineCount);
+                ++i;
+                if (i == 500){break;}
+            }
+        }
+    }
+    return lineNums;
 }
