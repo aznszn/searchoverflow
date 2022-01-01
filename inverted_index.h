@@ -1,6 +1,8 @@
 #include <filesystem>
 #include <set>
 
+#define WORDS_IN_FILE 500
+
 void buildInverted() {
     using namespace std::filesystem;
 
@@ -11,12 +13,12 @@ void buildInverted() {
         vector<vector<wstring>> f_index_file = fetch_table(curr);
 
         auto sorted = vector<vector<wstring>>(f_index_file.size());
-        vector<int> elem_array(1000, 0);
+        vector<int> elem_array(WORDS_IN_FILE, 0);
 
         for (auto &x: f_index_file)
             elem_array[stoi(x[1])]++;
 
-        for (int i = 1; i < 1000; ++i)
+        for (int i = 1; i < WORDS_IN_FILE; ++i)
             elem_array[i] += elem_array[i - 1];
 
         for (auto &i: f_index_file)
@@ -46,12 +48,12 @@ void updateInverted(set<int, greater<int>> barrelsToUpdate) {
         vector<vector<wstring>> f_index_file = fetch_table(curr);
 
         auto sorted = vector<vector<wstring>>(f_index_file.size());
-        vector<int> elem_array(1000, 0);
+        vector<int> elem_array(WORDS_IN_FILE, 0);
 
         for (auto &x: f_index_file)
             elem_array[stoi(x[1])]++;
 
-        for (int i = 1; i < 1000; ++i)
+        for (int i = 1; i < WORDS_IN_FILE; ++i)
             elem_array[i] += elem_array[i - 1];
 
         for (auto &i: f_index_file)
