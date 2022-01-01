@@ -49,13 +49,13 @@ int main() {
         array_fi->emplace_back("../data_structures/barrels/" + to_string(i) + ".txt", ios::app);
     }
 
-    //stop words
+    //stop words lexicon
     unordered_map<wstring, int> stopWordsLexicon;
     readStopWords(stopWordsLexicon);
     cout << "Stop Words Lexicon made" << endl;
 
 
-    int maxId = INT_MIN;
+    int maxId = INT_MIN; //last update max wordID
     vector<wstring> newRecords;
     unordered_map<wstring, vector<wstring>> docsInfo = getDocsInfo();
     unordered_map<wstring, int> lexicon = getLexicon(maxId);

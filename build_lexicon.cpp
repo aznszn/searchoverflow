@@ -1,7 +1,7 @@
 #include "stemminglib/english_stem.h"
 #include "utils/fetch_table.h"
-#include "utils/parseHTML.h"
 #include "inverted_index.h"
+//#include "utils/parseHTML.h"
 
 #define WORDS_IN_FILE 500
 #define MAX_WORD_LEN 17
@@ -30,45 +30,53 @@ void getLineNums();
 
 
 //TODO: remove global
-auto array_fi = new vector<wofstream>;
-set<int,
+auto array_fi = new vector<wofstream>; //barrel file streams array
 int main() {
     {
+        //writes the number of characters in each .csv into metaData file
         path x(current_path().string() + "/../dataset/questions_100k.csv");
         path y(current_path().string() + "/../dataset/answers_100k.csv");
         path z(current_path().string() + "/../dataset/tags_100k.csv");
-
         wofstream metaData("../data_structures/metadata.txt");
         metaData << file_size(x) << endl << file_size(y) << endl << file_size(z);
         metaData.close();
 
+        //build stop words lexicon
         unordered_map<wstring, int> stopWordsLexicon;
         readStopWords(stopWordsLexicon);
         cout << "Stop Words Lexicon made" << endl;
 
+        //lexicon map and file
         unordered_map<wstring, int> lexicon;
         wofstream lexicon_file("../data_structures/lexicon.txt", ios::out);
 
+        //incremental count for wordID
         int i = 0;
 
+        //fetch questions table into 2D vector
         wifstream questions("../dataset/questions_100k.csv");
         vector<vector<wstring>> questions_table = fetch_table(questions);
         cout << "questions table fetched" << endl;
 
+        //fetch answers table into 2D vector
         wifstream answers("../dataset/answers_100k.csv");
         vector<vector<wstring>> answers_table = fetch_table(answers);
         cout << "answers table fetched" << endl;
 
+        //fetch tags into 2D vector
         wifstream tags("../dataset/tags_100k.csv");
         vector<vector<wstring>> tags_table = fetch_table(tags);
         cout << "tags table fetched" << endl;
+
         //parseHTML(questions_table, QBODY_COL);
         //cout << "questions HTML parsed" << endl;
         //parseHTML(answers_table, ANSBODY_COL);
         //cout << "answers HTML parsed" << endl;
 
+        //build lexicon function
         buildLexicon(lexicon, questions_table, answers_table, tags_table, i, stopWordsLexicon);
 
+        //close all barrels
         for (auto &x: *array_fi)
             x.close();
 
@@ -85,9 +93,11 @@ int main() {
         lexicon_file.close();
     }
 
+    //build inverted
     buildInverted();
     cout << "Built inverted" << endl;
 
+    //update line number file
     getLineNums();
     cout << "Got Line Num" << endl;
 }
@@ -96,32 +106,34 @@ void buildLexicon(unordered_map<wstring, int> &lexicon, vector<vector<wstring>> 
     int j = 0; // for questions counter
     int k = 0; // for answers counter
     int t = 0; // for tags counter
+
+    //documents list file
     wofstream docList("../data_structures/docList.txt", ios::out);
 
     while (j < questions.size()) {
-        int overallCharacterCount = 0;
-        unordered_map<wstring, int> storesCount;
-        unordered_map<wstring, int> storesQACount;
-        unordered_map<wstring, wstring> hits;
-        unordered_map<wstring, wstring> hitsQA;
-        vector<wstring> wordsInTags;
+        int overallCharacterCount = 0; //stores the current word count in the document
+        unordered_map<wstring, int> storesCount; //stores the count of each word in the question title
+        unordered_map<wstring, int> storesQACount; //stores the count of each word in the body
+        unordered_map<wstring, wstring> hits; //unordered map for hits positions in question title
+        unordered_map<wstring, wstring> hitsQA; ////unordered map for hits positions in body
+        vector<wstring> wordsInTags; //vector to store all words in tags
 
         // tags
         while(1) {
-            int tagFound = getTag(t, tags, questions[j][0]);
+            int tagFound = getTag(t, tags, questions[j][0]); //get corresponding tag from table
 
             if (tagFound == -1){
                 break;
             }
             auto row_stream = wstringstream(tags[tagFound][1]);
-            utilLexiconForTags(lexicon, row_stream, i, wordsInTags, stopWordsLexicon);
+            utilLexiconForTags(lexicon, row_stream, i, wordsInTags, stopWordsLexicon); //lexicon build for tags
         }
-        buildForwardIndexTags(lexicon, TAGS_IMP, questions[j][0], wordsInTags);
+        buildForwardIndexTags(lexicon, TAGS_IMP, questions[j][0], wordsInTags); //forward index build for tags
 
         // question titles
         auto row_stream = wstringstream(questions[j][QTITLE_COL]);
-        utilLexiconFunction(lexicon, storesCount, row_stream, i, hits, overallCharacterCount, stopWordsLexicon);
-        buildForwardIndex(lexicon, storesCount, TITLE_IMP, questions[j][0], hits);
+        utilLexiconFunction(lexicon, storesCount, row_stream, i, hits, overallCharacterCount, stopWordsLexicon); //lexicon build for question title
+        buildForwardIndex(lexicon, storesCount, TITLE_IMP, questions[j][0], hits); //forward index build for question title
 
         // questions body
         row_stream = wstringstream(questions[j][QBODY_COL]);
@@ -131,12 +143,13 @@ void buildLexicon(unordered_map<wstring, int> &lexicon, vector<vector<wstring>> 
         int max = INT_MIN;
         int answerCount = 0;
         while (1) {
-            int ansFound = getAnswer(k, answers, questions[j][0]);
+            int ansFound = getAnswer(k, answers, questions[j][0]); //get corresponding answers for current question
 
             if (ansFound == -1) {
                 break;
             }
             ++answerCount;
+            //get max answer score
             if (stoi(answers[ansFound][SCORE_COL]) > max){
                 max = stoi(answers[ansFound][SCORE_COL]);
             }
@@ -146,17 +159,18 @@ void buildLexicon(unordered_map<wstring, int> &lexicon, vector<vector<wstring>> 
         }
         buildForwardIndex(lexicon, storesQACount, BODY_IMP, questions[j][0], hitsQA);
 
-        double rank = 0.46 * max + 0.33 * stoi(questions[j][SCORE_COL]) + 0.21 * answerCount;
-        docList << endl << questions[j][0] << L"," << overallCharacterCount << L"," << rank; // change to answerCount
-        ++j;
+        double rank = 0.46 * max + 0.33 * stoi(questions[j][SCORE_COL]) + 0.21 * answerCount; //calculate rank
+        docList << endl << questions[j][0] << L"," << overallCharacterCount << L"," << rank;
+        ++j; //increment question counter
     }
 }
 
 void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wstring, int> &storesCount, wstringstream& row_stream, int &i, unordered_map<wstring, wstring> &hits, int &overallCharacterCount, unordered_map<wstring, int> &stopWordsLexicon){
     wstring word;
-    stemming::english_stem<> stem;
+    stemming::english_stem<> stem; //for stemming
     wchar_t c;
 
+    //read char by char
     while (row_stream >> noskipws >> c) {
         switch (c) {
             case 'a' ... 'z':
@@ -171,22 +185,25 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
                 if (!word.empty()) {
                     stem(word);
                     if (word.length() <= MAX_WORD_LEN && !lexicon.count(word) && !stopWordsLexicon.count(word)) {
+                        //open barrel
                         if (i % (WORDS_IN_FILE) == 0) {
                             array_fi->push_back(wofstream(
                                     "../data_structures/barrels/" + to_string(i / (WORDS_IN_FILE )) + ".txt",
                                     ios::out));
                         }
-                        lexicon[word] = i++;
-                        storesCount[word] = 1;
+                        lexicon[word] = i++; //assign id to word
+                        storesCount[word] = 1; //store word count
 
-                        ++overallCharacterCount;
+                        ++overallCharacterCount; //increment total word count
+                        //concat hit positions
                         if(hits[word].length() + to_wstring(overallCharacterCount).length() + 20 < LINECAP)
                             hits[word] = hits[word] + L"," + to_wstring(overallCharacterCount);
                     }
                     else if (word.length() <= MAX_WORD_LEN && storesCount.count(word) && !stopWordsLexicon.count(word)){
-                        storesCount[word] += 1;
+                        storesCount[word] += 1; //increment word count
 
-                        ++overallCharacterCount;
+                        ++overallCharacterCount; //increment total word count
+                        //concat hit positions
                         if(hits[word].length() + to_wstring(overallCharacterCount).length() + 20 < LINECAP)
                             hits[word] = hits[word] + L"," + to_wstring(overallCharacterCount);
                     }
@@ -202,6 +219,7 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
 
         }
     }
+    //for last word
     if (!word.empty()) {
         stem(word);
         if (word.length() <= MAX_WORD_LEN && !lexicon.count(word) && !stopWordsLexicon.count(word)) {
@@ -237,9 +255,10 @@ void utilLexiconFunction(unordered_map<wstring, int> &lexicon, unordered_map<wst
 
 void utilLexiconForTags(unordered_map<wstring, int> &lexicon, wstringstream &row_stream, int &i, vector<wstring> &wordsInTags, unordered_map<wstring, int>& stopWordsLexicon){
     wstring word;
-    stemming::english_stem<> stem;
+    stemming::english_stem<> stem; //for stemming
     wchar_t c;
 
+    //go through each tag character by character
     while (row_stream >> noskipws >> c) {
         switch (c) {
             case 'a' ... 'z':
@@ -252,8 +271,9 @@ void utilLexiconForTags(unordered_map<wstring, int> &lexicon, wstringstream &row
                 break;
             default:
                 if (!word.empty()) {
-                    stem(word);
+                    stem(word); //stem word
                     if (word.length() <= MAX_WORD_LEN && !lexicon.count(word) && !stopWordsLexicon.count(word)) {
+                        //open the barrel
                         if (i % (WORDS_IN_FILE) == 0) {
                             array_fi->push_back(wofstream(
                                     "../data_structures/barrels/" + to_string(i / (WORDS_IN_FILE)) + ".txt",
@@ -267,6 +287,7 @@ void utilLexiconForTags(unordered_map<wstring, int> &lexicon, wstringstream &row
 
         }
     }
+    //for last word
     if (!word.empty()) {
         stem(word);
         if (word.length() <= MAX_WORD_LEN && !lexicon.count(word) && !stopWordsLexicon.count(word)) {
@@ -283,7 +304,7 @@ void utilLexiconForTags(unordered_map<wstring, int> &lexicon, wstringstream &row
 }
 
 void buildForwardIndex(unordered_map<wstring, int> &lexicon, unordered_map<wstring, int> &storesCount, int importance, const wstring& id, unordered_map<wstring, wstring> &hits){
-    //documentId, wordId, importance, numberOfHits, hits
+    //documentId, wordId, importance, numberOfHits, HitPositions
     for(auto &x: storesCount){
         int wordId = lexicon[x.first];
         wstringstream ss;
@@ -293,7 +314,7 @@ void buildForwardIndex(unordered_map<wstring, int> &lexicon, unordered_map<wstri
 }
 
 void buildForwardIndexTags(unordered_map<wstring, int> &lexicon, int importance, wstring &id, vector<wstring> &wordsInTags){
-    //documentId, wordId, importance
+    //documentId, wordId, importance, numberOfHits, HitPosition(position is 0 for tags)
     for (auto &x : wordsInTags){
         int wordId = lexicon[x];
         wstringstream ss;
@@ -335,8 +356,9 @@ void readStopWords(unordered_map<wstring, int> &map){
 }
 
 void getLineNums(){
-    wofstream lineNumberFile("../data_structures/lineNumbers.txt", ios::out);
+    wofstream lineNumberFile("../data_structures/lineNumbers.txt", ios::out); //open line number file
 
+    //get number of files in the /barrel dir
     auto dirIter = std::filesystem::directory_iterator(current_path().string() + "/../data_structures/barrels");
     int fileCount = count_if(
             begin(dirIter),
@@ -351,6 +373,7 @@ void getLineNums(){
     }
     int i = 0;
 
+    // calculate the line count for each word
     vector<wstring> row;
     wstring line;
     for(auto& file : files){
