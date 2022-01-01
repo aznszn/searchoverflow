@@ -66,6 +66,7 @@ int main() {
                     (id_in_barrel.size() == idstr.size() && id_in_barrel > idstr)) {
                     break;
                 }
+
                 getline(barrel, info, L' ');
 
                 BIGG_APPLE.emplace_back(docID, id_in_barrel.append(L"," + info));
@@ -81,89 +82,115 @@ int main() {
             });
         }
 
-        vector<vector<pair<wstring, wstring>>> beforeIntersectDocs = docs;
-        customIntersection(docs);
-
-        if(docs[0].empty() && queryWordIDs.size() > 3){
-            cout << "No intersection found" << endl;
-            vector<vector<int>> combinations = makeCombi(queryWordIDs.size(), queryWordIDs.size()-2);
-
-            int maxInDocsComb = INT_MIN;
-            for (auto & combination : combinations){
-                vector<vector<pair<wstring, wstring>>> docsTemp;
-                docsTemp.reserve(combination.size());
-                for (int j = 0; j < combination.size(); ++j){
-                    docsTemp.push_back(beforeIntersectDocs[j]);
-                }
-                customIntersection(docsTemp);
-                int sum = 0;
-                for (auto & k : docsTemp){
-                    sum += k.size();
-                }
-                if (!docsTemp[0].empty() && sum > maxInDocsComb){
-                    docs = docsTemp;
-                    maxInDocsComb = sum;
-                }
-            }
-        }
-
-
-        int maxi = 0;
-        for(int i = 0; i < docs.size(); i++){
-            if(docs[i].size() > docs[maxi].size()) {
-                maxi = i;
-            }
-        }
-
-        swap(docs[0], docs[maxi]);
-
         vector<pair<wstring, double>> docScores;
 
-        for (int i = 0; i < docs[0].size();) {
 
-            wstring docID = docs[0][i].first;
-            vector<wstring> hitsVector;
-            while (docs[0][i].first == docID && i < docs[0].size()) {
-                hitsVector.push_back(docs[0][i++].second);
-            }
+        if(queryWordIDs.size() > 1) {
+            vector<vector<pair<wstring, wstring>>> beforeIntersectDocs = docs;
+            customIntersection(docs);
 
-            for (int j = 1; j < docs.size(); ++j) {
-                for (auto &z: docs[j])
-                    if (z.first == docID) {
-                        hitsVector.push_back(z.second);
+            if (docs[0].empty() && queryWordIDs.size() > 3) {
+                cout << "No intersection found" << endl;
+                vector<vector<int>> combinations = makeCombi(queryWordIDs.size(), queryWordIDs.size() - 2);
+
+                int maxInDocsComb = INT_MIN;
+                for (auto &combination: combinations) {
+                    vector<vector<pair<wstring, wstring>>> docsTemp;
+                    docsTemp.reserve(combination.size());
+                    for (int j = 0; j < combination.size(); ++j) {
+                        docsTemp.push_back(beforeIntersectDocs[j]);
                     }
-            }
-
-            unordered_map<int, pair<wstring, int>> posWordMap;
-            vector<int> hitPos;
-
-            for (auto &hitlist: hitsVector) {
-                wstringstream linestream(hitlist);
-                wstring wordID;
-                wstring imp;
-                getline(linestream, wordID, L',');
-                getline(linestream, imp, L',');
-                wstring cell;
-                getline(linestream, cell, L',');
-
-                while (getline(linestream, cell, L',')) {
-                    int pos = stoi(cell);
-                    hitPos.push_back(pos);
-                    posWordMap.emplace(pos,pair(wordID, stoi(imp)));
-                }
-
-            }
-
-            std::sort(hitPos.begin(), hitPos.end());
-
-            for (int index = 1; index < hitPos.size() - 1; ++index) {
-                if (((hitPos[index] - hitPos[index - 1]) > 13) && ((hitPos[index + 1] - hitPos[index]) > 13)) {
-                    hitPos.erase(hitPos.begin() + index);
+                    customIntersection(docsTemp);
+                    int sum = 0;
+                    for (auto &k: docsTemp) {
+                        sum += k.size();
+                    }
+                    if (!docsTemp[0].empty() && sum > maxInDocsComb) {
+                        docs = docsTemp;
+                        maxInDocsComb = sum;
+                    }
                 }
             }
 
-            double cumscore = getCumScore(queryWordIDs, posWordMap, hitPos);
-            docScores.emplace_back(docs[0][i - 1].first, cumscore);
+
+            int maxi = 0;
+            for (int i = 0; i < docs.size(); i++) {
+                if (docs[i].size() > docs[maxi].size()) {
+                    maxi = i;
+                }
+            }
+            swap(docs[0], docs[maxi]);
+
+            for (int i = 0; i < docs[0].size();) {
+                wstring docID = docs[0][i].first;
+                vector<wstring> hitsVector;
+                while (docs[0][i].first == docID && i < docs[0].size()) {
+                    hitsVector.push_back(docs[0][i++].second);
+                }
+
+                for (int j = 1; j < docs.size(); ++j) {
+                    for (auto &z: docs[j])
+                        if (z.first == docID) {
+                            hitsVector.push_back(z.second);
+                        }
+                }
+
+                unordered_map<int, pair<wstring, int>> posWordMap;
+                vector<int> hitPos;
+
+                for (auto &hitlist: hitsVector) {
+                    wstringstream linestream(hitlist);
+                    wstring wordID;
+                    wstring imp;
+                    getline(linestream, wordID, L',');
+                    getline(linestream, imp, L',');
+                    wstring cell;
+                    getline(linestream, cell, L',');
+
+                    while (getline(linestream, cell, L',')) {
+                        int pos = stoi(cell);
+                        hitPos.push_back(pos);
+                        posWordMap.emplace(pos, pair(wordID, stoi(imp)));
+                    }
+
+                }
+
+                sort(hitPos.begin(), hitPos.end());
+
+                for (int index = 1; index < hitPos.size() - 1; ++index) {
+                    if (((hitPos[index] - hitPos[index - 1]) > 13) && ((hitPos[index + 1] - hitPos[index]) > 13)) {
+                        hitPos.erase(hitPos.begin() + index);
+                    }
+                }
+
+                double cumscore = getCumScore(queryWordIDs, posWordMap, hitPos);
+                docScores.emplace_back(docs[0][i - 1].first, cumscore);
+            }
+        }
+
+        else{
+            for(int i = 0; i < docs[0].size();){
+                wstring docID = docs[0][i].first;
+                vector<wstring> hitsVector;
+                while (docs[0][i].first == docID && i < docs[0].size()) {
+                    hitsVector.push_back(docs[0][i++].second);
+                }
+
+                double cumScore = 0;
+                for (auto &hitlist: hitsVector) {
+                    wstringstream linestream(hitlist);
+                    wstring wordID;
+                    wstring imp;
+                    getline(linestream, wordID, L',');
+                    getline(linestream, imp, L',');
+                    wstring numOfHits;
+                    getline(linestream, numOfHits, L',');
+                    cumScore += stoi(imp) * stoi(numOfHits);
+                }
+
+                cumScore /= (double) hitsVector.size();
+                docScores.emplace_back(docID, cumScore);
+            }
         }
 
         std::sort(docScores.begin(), docScores.end(), [&](const pair<wstring, double> &a, const pair<wstring, double> &b) {
@@ -356,7 +383,7 @@ vector<unordered_map<wstring, int>> getLineNumbers(){
                 getline(linestream, lineCount, L',');
                 lineNums[k][wordId] = stoi(lineCount);
                 ++i;
-                if (i == WORDS_IN_BARRELS){break;}
+                if (i == 500){break;}
             }
         }
     }
