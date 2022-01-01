@@ -33,6 +33,7 @@ void readStopWords(unordered_map<wstring, int> &);
 void getLineNums();
 
 auto array_fi = new vector<wofstream>;
+set<int, greater<int>> barrelsToUpdate;
 
 int main() {
     //get all barrels and total files count
@@ -120,7 +121,7 @@ int main() {
 
     lexicon_file.close();
 
-    buildInverted();
+    updateInverted(barrelsToUpdate);
     cout << "Built inverted" << endl;
 
     questions.close();
@@ -135,7 +136,10 @@ int main() {
     updateMetaData << file_size(x) << endl << file_size(y) << endl << file_size(z);
     updateMetaData.close();
 
+    cout << "Updated Meta Data File" << endl;
+
     getLineNums();
+    cout << "Updated Line Number File" << endl;
 }
 
 void buildLexicon(unordered_map<wstring, int> &lexicon, vector<vector<wstring>> questions, vector<vector<wstring>> answers, vector<vector<wstring>> tags, int& i, unordered_map<wstring, int> &stopWordsLexicon) {
@@ -335,6 +339,7 @@ void buildForwardIndex(unordered_map<wstring, int> &lexicon, unordered_map<wstri
         wstringstream ss;
         ss  << endl << id << L"," << (wordId - (wordId/WORDS_IN_FILE)*WORDS_IN_FILE) << L"," << importance << L"," << x.second << hits[x.first];
         array_fi->at(wordId / (WORDS_IN_FILE)) << ss.str() << setw(LINECAP - ss.str().length()) << " ";
+        barrelsToUpdate.insert(wordId/ WORDS_IN_FILE);
     }
 }
 
@@ -345,6 +350,7 @@ void buildForwardIndexTags(unordered_map<wstring, int> &lexicon, int importance,
         wstringstream ss;
         ss  << "\n" << id << L"," << (wordId - (wordId/WORDS_IN_FILE)*WORDS_IN_FILE) << L"," << importance << 1 << L"," << 0;
         array_fi->at(wordId / (WORDS_IN_FILE)) << ss.str() << setw(LINECAP - ss.str().length()) << " ";
+        barrelsToUpdate.insert(wordId/ WORDS_IN_FILE);
     }
 }
 

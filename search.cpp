@@ -356,7 +356,7 @@ vector<unordered_map<wstring, int>> getLineNumbers(){
                 getline(linestream, lineCount, L',');
                 lineNums[k][wordId] = stoi(lineCount);
                 ++i;
-                if (i == 500){break;}
+                if (i == WORDS_IN_BARRELS){break;}
             }
         }
     }

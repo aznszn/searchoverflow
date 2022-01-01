@@ -31,6 +31,7 @@ void getLineNums();
 
 //TODO: remove global
 auto array_fi = new vector<wofstream>;
+set<int,
 int main() {
     {
         path x(current_path().string() + "/../dataset/questions_100k.csv");
