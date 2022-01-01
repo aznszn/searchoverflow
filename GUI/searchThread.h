@@ -1,0 +1,4 @@
+#ifndef SEARCHTHREAD_H
+#define SEARCHTHREAD_H
+
+#endif // SEARCHTHREAD_H
