@@ -42,6 +42,7 @@ void buildInverted() {
 void updateInverted(set<int, greater<int>> barrelsToUpdate) {
     using namespace std::filesystem;
     set<int, greater<int> >::iterator itr;
+
     for (itr = barrelsToUpdate.begin(); itr != barrelsToUpdate.end(); itr++) {
         cout << "../data_structures/barrels/" + to_string(*itr) << endl;
         wifstream curr("../data_structures/barrels/" + to_string(*itr) + ".txt");
