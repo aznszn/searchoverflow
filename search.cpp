@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <chrono>
 #include <sstream>
+#include <unordered_set>
 
 #define LINE_SIZE 201
 #define WORDS_IN_BARRELS 500
@@ -11,8 +12,6 @@ using namespace chrono;
 using namespace filesystem;
 
 
-vector<wstring> readNext(wifstream& file);
-vector<vector<wstring>> fetch_table(wifstream& file);
 vector<wstring> getAndParseQuery();
 unordered_map<wstring, int> getLexicon();
 unordered_map<wstring, vector<wstring>> getDocsInfo();
@@ -20,8 +19,7 @@ vector<unordered_map<wstring, int>> getLineNumbers();
 void customIntersection(vector<vector<pair<wstring,wstring>>> &);
 void makeCombiUtil(vector<vector<int>>&, vector<int>&, int, int, int);
 vector<vector<int> > makeCombi(int, int);
-double getCumScore(const vector<int> &queryWordIDs, unordered_map<int, pair<wstring, int>> &posWordMap,
-                   const vector<int> &hitPos);
+double getCumScore(const vector<int> &queryWordIDs, unordered_map<int, pair<wstring, int>> &posWordMap, const vector<int> &hitPos);
 
 #pragma clang diagnostic push
 
@@ -83,7 +81,6 @@ int main() {
         }
 
         vector<pair<wstring, double>> docScores;
-
 
         if(queryWordIDs.size() > 1) {
             vector<vector<pair<wstring, wstring>>> beforeIntersectDocs = docs;
@@ -163,7 +160,7 @@ int main() {
                     }
                 }
 
-                double cumscore = getCumScore(queryWordIDs, posWordMap, hitPos);
+                double cumscore = 0.95*getCumScore(queryWordIDs, posWordMap, hitPos) + 0.05*stod(docs_info[docs[0][i-1].first][1]);
                 docScores.emplace_back(docs[0][i - 1].first, cumscore);
             }
         }
@@ -197,7 +194,7 @@ int main() {
             return (a.second > b.second);
         });
 
-        cout << "\n" << duration_cast<milliseconds>(high_resolution_clock::now() - start).count()/1000.0 << " seconds to fetch " << docScores.size() << " results\n";
+        cout << "\n" << ((double) duration_cast<milliseconds>(high_resolution_clock::now() - start).count())/1000 << " seconds to fetch " << docScores.size() << " results\n";
 
         for (auto &item: docScores) {
             wcout << "https://stackoverflow.com/questions/" << item.first << " " << "score " << item.second << "\n";
@@ -314,9 +311,12 @@ vector<wstring> getAndParseQuery() {
 
 void customIntersection(vector<vector<pair<wstring,wstring>>> &documents){
     if (documents.size() == 1){return;}
-    vector<wstring> commonDocIDs;
+
+    unordered_set<wstring> commonDocIDs;
+
     for (int i = 0; i < documents[0].size(); ++i){
         vector<wstring> temp;
+
         for (int z = 1; z < documents.size(); ++z){
             if(binary_search(documents[z].begin(), end(documents[z]), documents[0][i], [](const pair<wstring, wstring>& a, const pair<wstring, wstring>& b){
                 return  a.first.size() < b.first.size() || (a.first.size() == b.first.size() && a.first < b.first);
@@ -324,12 +324,13 @@ void customIntersection(vector<vector<pair<wstring,wstring>>> &documents){
                 temp.push_back(documents[0][i].first);
             }
         }
-        if (temp.size() == documents.size() - 1){commonDocIDs.push_back(documents[0][i].first);}
+
+        if (temp.size() == documents.size() - 1){commonDocIDs.insert(documents[0][i].first);}
     }
 
-    for (int i = 0; i < documents.size(); ++i){
-        documents[i].erase(remove_if(documents[i].begin(), documents[i].end(),
-                                     [&commonDocIDs](const pair<wstring, wstring> &s) { return find(commonDocIDs.begin(), commonDocIDs.end(), s.first) == commonDocIDs.end(); }), documents[i].end());
+    for (auto & document : documents){
+        document.erase(remove_if(document.begin(), document.end(),
+                                     [&commonDocIDs](const pair<wstring, wstring> &s) { return !commonDocIDs.count(s.first); }), document.end());
     }
 }
 

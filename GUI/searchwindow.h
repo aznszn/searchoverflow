@@ -12,7 +12,9 @@
 #include <QAbstractItemModel>
 #include <QStringListModel>
 #include <QStringList>
+#include <QtSvg>
 #include <QDesktopServices>
+#include <unordered_set>
 
 using namespace std;
 
@@ -47,6 +49,5 @@ private:
     vector<vector<int> > makeCombi(int, int);
     double getCumScore(const vector<int> &queryWordIDs, unordered_map<int, pair<wstring, int>> &posWordMap, const vector<int> &hitPos);
     QStringListModel* resultListModel;
-    QStringList* results;
 };
 #endif // SEARCHWINDOW_H

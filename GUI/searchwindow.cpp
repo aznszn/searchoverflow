@@ -22,14 +22,15 @@ searchWindow::searchWindow(QWidget *parent)
     ui->logo->setPixmap(p.scaled(w,h,Qt::KeepAspectRatio));
     ui->resultsList->setUniformItemSizes(true);
     resultListModel = new QStringListModel(this);
-    results = new QStringList();
     ui->resultsList->setModel(resultListModel);
     ui->resultsList->setEditTriggers(QListView::NoEditTriggers);
     ui->searchBar->setFrame(false);
     ui->searchBar->setPlaceholderText("Enter your query");
     ui->toolButton->setIcon(QPixmap("D:\\searchoverflow\\search.png"));
-    ui->toolButton->setIconSize(QSize(30,30));
-    connect(ui->searchBar, &QLineEdit::textChanged, this, &searchWindow::on_toolButton_clicked);
+    ui->toolButton->setIconSize(QSize(45,45));
+    ui->resultsList->setFrameStyle(QListView::NoFrame);
+    ui->resultsList->setStyleSheet("QListView::item{min-height: 46px; max-height: 46px; }");
+    ui->searchBar->setAlignment(Qt::AlignVCenter);
 }
 
 double searchWindow::getCumScore(const vector<int> &queryWordIDs, unordered_map<int, pair<wstring, int>> &posWordMap, const vector<int> &hitPos) {
@@ -137,9 +138,12 @@ vector<wstring> searchWindow::getAndParseQuery(wstring query) {
 
 void searchWindow::customIntersection(vector<vector<pair<wstring,wstring>>> &documents){
     if (documents.size() == 1){return;}
-    vector<wstring> commonDocIDs;
+
+    unordered_set<wstring> commonDocIDs;
+
     for (int i = 0; i < documents[0].size(); ++i){
         vector<wstring> temp;
+
         for (int z = 1; z < documents.size(); ++z){
             if(binary_search(documents[z].begin(), end(documents[z]), documents[0][i], [](const pair<wstring, wstring>& a, const pair<wstring, wstring>& b){
                 return  a.first.size() < b.first.size() || (a.first.size() == b.first.size() && a.first < b.first);
@@ -147,12 +151,13 @@ void searchWindow::customIntersection(vector<vector<pair<wstring,wstring>>> &doc
                 temp.push_back(documents[0][i].first);
             }
         }
-        if (temp.size() == documents.size() - 1){commonDocIDs.push_back(documents[0][i].first);}
+
+        if (temp.size() == documents.size() - 1){commonDocIDs.insert(documents[0][i].first);}
     }
 
-    for (int i = 0; i < documents.size(); ++i){
-        documents[i].erase(remove_if(documents[i].begin(), documents[i].end(),
-                                     [&commonDocIDs](const pair<wstring, wstring> &s) { return std::find(commonDocIDs.begin(), commonDocIDs.end(), s.first) == commonDocIDs.end(); }), documents[i].end());
+    for (auto & document : documents){
+        document.erase(remove_if(document.begin(), document.end(),
+                                     [&commonDocIDs](const pair<wstring, wstring> &s) { return !commonDocIDs.count(s.first); }), document.end());
     }
 }
 
@@ -229,7 +234,8 @@ void searchWindow::on_resultsList_doubleClicked(const QModelIndex &index)
 
 void searchWindow::on_toolButton_clicked()
 {
-
+    QStringList results;
+    resultListModel->setStringList(results);
     QString query = ui->searchBar->text();
     vector<wstring> words = getAndParseQuery(query.toStdWString());
     vector<vector<pair<wstring, wstring>>> docs;
@@ -259,7 +265,6 @@ void searchWindow::on_toolButton_clicked()
         wstring id_in_barrel;
         wstring info;
         while (getline(barrel, docID, L',')) {
-            QCoreApplication::processEvents();
             getline(barrel, id_in_barrel, L',');
             if (id_in_barrel.size() > idstr.size() ||
                 (id_in_barrel.size() == idstr.size() && id_in_barrel > idstr)) {
@@ -362,7 +367,7 @@ void searchWindow::on_toolButton_clicked()
                 }
             }
 
-            double cumscore = getCumScore(queryWordIDs, posWordMap, hitPos);
+            double cumscore = 0.95*getCumScore(queryWordIDs, posWordMap, hitPos) + 0.05*stod(docs_info[docs[0][i-1].first][1]);
             docScores.emplace_back(docs[0][i - 1].first, cumscore);
         }
     }
@@ -396,15 +401,14 @@ void searchWindow::on_toolButton_clicked()
         return (a.second > b.second);
     });
 
-    cout << "\n" << duration_cast<milliseconds>(high_resolution_clock::now() - start).count()/1000.0 << " seconds to fetch " << docScores.size() << " results\n";
-
+    cout << "\n" << ((double) duration_cast<milliseconds>(high_resolution_clock::now() - start).count())/1000 << " seconds to fetch " << docScores.size() << " results\n";
 
     for (auto &item: docScores) {
         wstring res = L"https://stackoverflow.com/questions/";
         res.append(item.first);
-        results->push_back(QString::fromWCharArray(res.data()));
+        results.push_back(QString::fromWCharArray(res.data()));
     }
 
-    resultListModel->setStringList(*results);
+    resultListModel->setStringList(results);
 }
 
