@@ -4,7 +4,7 @@
 #include <sstream>
 
 #define LINE_SIZE 201
-#define WORDS_IN_BARRELS 500
+#define WORDS_IN_BARRELS 1000
 
 using namespace std;
 using namespace chrono;
@@ -27,7 +27,7 @@ double getCumScore(const vector<int> &queryWordIDs, unordered_map<int, pair<wstr
 
 #pragma ide diagnostic ignored "EndlessLoop"
 int main() {
-    unordered_map<wstring, vector<wstring>> docs_info = getDocsInfo();  //doclis
+    unordered_map<wstring, vector<wstring>> docs_info = getDocsInfo();  //doclist
     vector<unordered_map<wstring, int>> lineNums = getLineNumbers(); // map that tells you where each word starts in the barrels
     unordered_map<wstring, int> lexicon = getLexicon();
 

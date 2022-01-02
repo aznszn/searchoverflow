@@ -7,7 +7,7 @@
 using namespace std;
 using namespace filesystem;
 
-#define WORDS_IN_FILE 500
+#define WORDS_IN_FILE 1000
 #define MAX_WORD_LEN 17
 #define TAGS_IMP 4
 #define TITLE_IMP 10
