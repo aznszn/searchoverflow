@@ -308,7 +308,7 @@ void buildForwardIndex(unordered_map<wstring, int> &lexicon, unordered_map<wstri
     for(auto &x: storesCount){
         int wordId = lexicon[x.first];
         wstringstream ss;
-        ss  << endl << id << L"," << wordId % WORDS_IN_FILE << L"," << importance << L"," << x.second << hits[x.first];    //fixed this
+        ss  << endl << id << L"," << wordId % WORDS_IN_FILE << L"," << importance << L"," << x.second << L"," << hits[x.first];    //fixed this
         array_fi->at(wordId / (WORDS_IN_FILE)) << ss.str() << setw(LINECAP - ss.str().length()) << " ";
     }
 }
