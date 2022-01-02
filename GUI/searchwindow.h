@@ -38,6 +38,8 @@ private slots:
 
     void on_toolButton_clicked();
 
+    void on_luckyButton_clicked();
+
 private:
     Ui::searchWindow *ui;
     unordered_map<wstring, vector<wstring>> docs_info;

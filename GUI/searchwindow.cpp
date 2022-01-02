@@ -489,3 +489,10 @@ void searchWindow::on_resultsList_doubleClicked(const QModelIndex &index)
 }
 
 
+
+void searchWindow::on_luckyButton_clicked()
+{
+    on_toolButton_clicked();
+    QDesktopServices::openUrl(resultListModel->data(resultListModel->index(0,0)).toString());
+}
+
