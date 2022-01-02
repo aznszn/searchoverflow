@@ -6,25 +6,28 @@
 void buildInverted() {
     using namespace std::filesystem;
 
+    //iterate over every barrel
     for (const auto &entry: directory_iterator(current_path().string() + "/../data_structures/barrels")) {
         wcout << entry.path() << endl;
         wifstream curr(entry.path());
 
+        //get the entire barrel in this 2D vector
         vector<vector<wstring>> f_index_file = fetch_table(curr);
 
+        //counting sort algo
         auto sorted = vector<vector<wstring>>(f_index_file.size());
-        vector<int> elem_array(WORDS_IN_FILE, 0);
+        vector<int> elem_array(WORDS_IN_FILE, 0);   //max
 
         for (auto &x: f_index_file)
-            elem_array[stoi(x[1])]++;
+            elem_array[stoi(x[1])]++;   //frequency
 
         for (int i = 1; i < WORDS_IN_FILE; ++i)
-            elem_array[i] += elem_array[i - 1];
+            elem_array[i] += elem_array[i - 1]; //cumulative frequency
 
         for (auto &i: f_index_file)
-            sorted.at(elem_array[stoi(i[1])]-- - 1) = i;
+            sorted.at(elem_array[stoi(i[1])]-- - 1) = i;    //placing at appropriate index
 
-        wofstream currOut(entry.path(), ios::out);
+        wofstream currOut(entry.path(), ios::out);      //writing back the inverted barrel)
         currOut << setw(199) << " ";
         currOut << "\n";
         for (auto &row: sorted) {
@@ -34,7 +37,7 @@ void buildInverted() {
             currOut << "\n";
         }
         currOut.close();
-        resize_file(entry.path(), file_size(entry.path()) - 2);
+        resize_file(entry.path(), file_size(entry.path()) - 2); //remove trailing CRLF
     }
 }
 

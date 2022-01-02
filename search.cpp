@@ -25,12 +25,12 @@ double getCumScore(const vector<int> &queryWordIDs, unordered_map<int, pair<wstr
 
 #pragma ide diagnostic ignored "EndlessLoop"
 int main() {
+    //getting doclist, lexicon and linenums from their respective files
     unordered_map<wstring, vector<wstring>> docs_info = getDocsInfo();  //doclis
     vector<unordered_map<wstring, int>> lineNums = getLineNumbers(); // map that tells you where each word starts in the barrels
     unordered_map<wstring, int> lexicon = getLexicon();
 
     while (true) {
-
         vector<wstring> words = getAndParseQuery();
         vector<vector<pair<wstring, wstring>>> docs;
         vector<int> queryWordIDs;

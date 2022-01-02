@@ -158,14 +158,14 @@ border-bottom-right-radius: 22px;</string>
          </spacer>
         </item>
         <item>
-         <widget class="QPushButton" name="pushButton">
+         <widget class="QPushButton" name="searchButton">
           <property name="text">
            <string>Search</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="pushButton_2">
+         <widget class="QPushButton" name="luckyButton">
           <property name="text">
            <string>I'm Feeling Lucky</string>
           </property>
@@ -272,6 +272,22 @@ QScrollbar{
     <hint type="destinationlabel">
      <x>70</x>
      <y>342</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>searchButton</sender>
+   <signal>clicked()</signal>
+   <receiver>toolButton</receiver>
+   <slot>click()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>355</x>
+     <y>230</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>73</x>
+     <y>164</y>
     </hint>
    </hints>
   </connection>
