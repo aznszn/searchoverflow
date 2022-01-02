@@ -17,6 +17,7 @@
 #include <unordered_set>
 #include <QFile>
 #include <QDebug>
+#include <sstream>
 
 using namespace std;
 

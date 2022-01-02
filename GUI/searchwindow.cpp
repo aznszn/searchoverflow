@@ -13,6 +13,11 @@ searchWindow::searchWindow(QWidget *parent)
     , ui(new Ui::searchWindow)
 {
     ui->setupUi(this);
+
+    QFile stylesheet("D:\\searchoverflow\\GUI\\style.qss");
+    stylesheet.open(QFile::ReadOnly);
+    this->setStyleSheet(QLatin1String(stylesheet.readAll()));
+
     docs_info = getDocsInfo();
     lineNums = getLineNumbers();
     lexicon = getLexicon();
@@ -234,6 +239,8 @@ void searchWindow::on_resultsList_doubleClicked(const QModelIndex &index)
 
 void searchWindow::on_toolButton_clicked()
 {
+    bool noIntersection = false;
+    ui->infoLabel->clear();
     QStringList results;
     resultListModel->setStringList(results);
     QString query = ui->searchBar->text();
@@ -248,6 +255,7 @@ void searchWindow::on_toolButton_clicked()
     }
 
     if (queryWordIDs.empty()){
+        ui->infoLabel->setText("None of the terms in the query exist in the dataset");
         cout << "Words do not exist in the lexicon" << endl;
         return;
     }
@@ -294,7 +302,9 @@ void searchWindow::on_toolButton_clicked()
         customIntersection(docs);
 
         if (docs[0].empty() && queryWordIDs.size() > 3) {
-            cout << "No intersection found" << endl;
+            noIntersection = true;
+            ui->infoLabel->setText("No document containing all of the searched terms was found\nAttempting to find a document with some combination of the search terms");
+            //cout << "No intersection found" << endl;
             vector<vector<int>> combinations = makeCombi(queryWordIDs.size(), queryWordIDs.size() - 2);
 
             int maxInDocsComb = INT_MIN;
@@ -367,7 +377,7 @@ void searchWindow::on_toolButton_clicked()
                 }
             }
 
-            double cumscore = 0.95*getCumScore(queryWordIDs, posWordMap, hitPos) + 0.05*stod(docs_info[docs[0][i-1].first][1]);
+            double cumscore = getCumScore(queryWordIDs, posWordMap, hitPos);
             docScores.emplace_back(docs[0][i - 1].first, cumscore);
         }
     }
@@ -401,8 +411,15 @@ void searchWindow::on_toolButton_clicked()
         return (a.second > b.second);
     });
 
-    cout << "\n" << ((double) duration_cast<milliseconds>(high_resolution_clock::now() - start).count())/1000 << " seconds to fetch " << docScores.size() << " results\n";
+    stringstream infoStream;
+    infoStream  << ((double) duration_cast<milliseconds>(high_resolution_clock::now() - start).count())/1000 << " seconds to fetch " << docScores.size() << " results\n";
 
+    if (noIntersection){
+        ui->infoLabel->setText(ui->infoLabel->text().append("\n") + QString::fromStdString(infoStream.str()));
+    }
+    else{
+        ui->infoLabel->setText(QString::fromStdString(infoStream.str()));
+    }
     for (auto &item: docScores) {
         wstring res = L"https://stackoverflow.com/questions/";
         res.append(item.first);

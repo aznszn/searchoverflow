@@ -159,8 +159,7 @@ int main() {
                         hitPos.erase(hitPos.begin() + index);
                     }
                 }
-
-                double cumscore = 0.992*getCumScore(queryWordIDs, posWordMap, hitPos) + 0.008*stod(docs_info[docs[0][i-1].first][1]);
+                double cumscore = getCumScore(queryWordIDs, posWordMap, hitPos);
                 docScores.emplace_back(docs[0][i - 1].first, cumscore);
             }
         }
