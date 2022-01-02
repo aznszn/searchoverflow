@@ -7,7 +7,7 @@
 using namespace std;
 using namespace filesystem;
 
-#define WORDS_IN_FILE 1000
+#define WORDS_IN_FILE 500
 #define MAX_WORD_LEN 17
 #define TAGS_IMP 4
 #define TITLE_IMP 10
@@ -337,7 +337,7 @@ void buildForwardIndex(unordered_map<wstring, int> &lexicon, unordered_map<wstri
     for(auto &x: storesCount){
         int wordId = lexicon[x.first];
         wstringstream ss;
-        ss  << endl << id << L"," << wordId % WORDS_IN_FILE << L"," << importance << L"," << x.second << hits[x.first];
+        ss  << endl << id << L"," << (wordId - (wordId/WORDS_IN_FILE)*WORDS_IN_FILE) << L"," << importance << L"," << x.second << hits[x.first];
         array_fi->at(wordId / (WORDS_IN_FILE)) << ss.str() << setw(LINECAP - ss.str().length()) << " ";
         barrelsToUpdate.insert(wordId/ WORDS_IN_FILE);
     }
@@ -348,7 +348,7 @@ void buildForwardIndexTags(unordered_map<wstring, int> &lexicon, int importance,
     for (auto &x : wordsInTags){
         int wordId = lexicon[x];
         wstringstream ss;
-        ss  << "\n" << id << L"," << wordId % WORDS_IN_FILE << L"," << importance << L"," << 1 << L"," << 0;
+        ss  << "\n" << id << L"," << (wordId - (wordId/WORDS_IN_FILE)*WORDS_IN_FILE) << L"," << importance << L',' << 1 << L"," << 0;
         array_fi->at(wordId / (WORDS_IN_FILE)) << ss.str() << setw(LINECAP - ss.str().length()) << " ";
         barrelsToUpdate.insert(wordId/ WORDS_IN_FILE);
     }

@@ -1,8 +1,7 @@
 #include <filesystem>
 #include <set>
 
-#define WORDS_IN_FILE 1000
-#define LINECAP 200
+#define WORDS_IN_FILE 500
 
 void buildInverted() {
     using namespace std::filesystem;
@@ -17,16 +16,16 @@ void buildInverted() {
         vector<int> elem_array(WORDS_IN_FILE, 0);
 
         for (auto &x: f_index_file)
-            elem_array[stoi(x[1])]++;           // frequency
+            elem_array[stoi(x[1])]++;
 
         for (int i = 1; i < WORDS_IN_FILE; ++i)
-            elem_array[i] += elem_array[i - 1];     // cumulative frequency
+            elem_array[i] += elem_array[i - 1];
 
         for (auto &i: f_index_file)
             sorted.at(elem_array[stoi(i[1])]-- - 1) = i;
 
         wofstream currOut(entry.path(), ios::out);
-        currOut << setw(LINECAP - 1) << " ";    // fixed this
+        currOut << setw(199) << " ";
         currOut << "\n";
         for (auto &row: sorted) {
             for (auto &column: row)
@@ -39,9 +38,9 @@ void buildInverted() {
     }
 }
 
-void updateInverted(set<int, greater<int>> barrelsToUpdate) {
+void updateInverted(set<int, greater<>> barrelsToUpdate) {
     using namespace std::filesystem;
-    set<int, greater<int> >::iterator itr;
+    set<int, greater<> >::iterator itr;
 
     for (itr = barrelsToUpdate.begin(); itr != barrelsToUpdate.end(); itr++) {
         cout << "../data_structures/barrels/" + to_string(*itr) << endl;
@@ -53,16 +52,16 @@ void updateInverted(set<int, greater<int>> barrelsToUpdate) {
         vector<int> elem_array(WORDS_IN_FILE, 0);
 
         for (auto &x: f_index_file)
-            elem_array[stoi(x[1])]++;       // frequency
+            elem_array[stoi(x[1])]++;
 
         for (int i = 1; i < WORDS_IN_FILE; ++i)
-            elem_array[i] += elem_array[i - 1];     // cumulative frequency
+            elem_array[i] += elem_array[i - 1];
 
         for (auto &i: f_index_file)
             sorted.at(elem_array[stoi(i[1])]-- - 1) = i;
 
         wofstream currOut("../data_structures/barrels/" + to_string(*itr) + ".txt", ios::out);
-        currOut << setw(LINECAP-1) << " ";
+        currOut << setw(199) << " ";
         currOut << "\n";
         for (auto &row: sorted) {
             for (auto &column: row)

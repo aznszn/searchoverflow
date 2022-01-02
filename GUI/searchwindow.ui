@@ -44,7 +44,7 @@
         <property name="minimumSize">
          <size>
           <width>320</width>
-          <height>62</height>
+          <height>63</height>
          </size>
         </property>
         <property name="text">
@@ -156,12 +156,40 @@ border-bottom-right-radius: 22px;</string>
           <verstretch>1</verstretch>
          </sizepolicy>
         </property>
+        <property name="font">
+         <font>
+          <pointsize>14</pointsize>
+          <italic>false</italic>
+          <bold>false</bold>
+         </font>
+        </property>
+        <property name="cursor" stdset="0">
+         <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+        <property name="mouseTracking">
+         <bool>true</bool>
+        </property>
         <property name="styleSheet">
-         <string notr="true"/>
+         <string notr="true">border-color: transparent;
+font: 14pt &quot;Segoe UI&quot;;
+
+QScrollbar{
+	max-height: 12px;
+}
+
+
+</string>
         </property>
        </widget>
       </item>
      </layout>
+    </item>
+    <item row="1" column="0">
+     <widget class="QLabel" name="infoLabel">
+      <property name="text">
+       <string>TextLabel</string>
+      </property>
+     </widget>
     </item>
    </layout>
   </widget>

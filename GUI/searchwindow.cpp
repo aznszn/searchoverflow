@@ -411,4 +411,3 @@ void searchWindow::on_toolButton_clicked()
 
     resultListModel->setStringList(results);
 }
-

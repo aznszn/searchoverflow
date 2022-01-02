@@ -15,6 +15,8 @@
 #include <QtSvg>
 #include <QDesktopServices>
 #include <unordered_set>
+#include <QFile>
+#include <QDebug>
 
 using namespace std;
 

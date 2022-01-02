@@ -5,7 +5,7 @@
 #include <unordered_set>
 
 #define LINE_SIZE 201
-#define WORDS_IN_BARRELS 1000
+#define WORDS_IN_BARRELS 500
 
 using namespace std;
 using namespace chrono;
@@ -25,7 +25,7 @@ double getCumScore(const vector<int> &queryWordIDs, unordered_map<int, pair<wstr
 
 #pragma ide diagnostic ignored "EndlessLoop"
 int main() {
-    unordered_map<wstring, vector<wstring>> docs_info = getDocsInfo();  //doclist
+    unordered_map<wstring, vector<wstring>> docs_info = getDocsInfo();  //doclis
     vector<unordered_map<wstring, int>> lineNums = getLineNumbers(); // map that tells you where each word starts in the barrels
     unordered_map<wstring, int> lexicon = getLexicon();
 
@@ -160,7 +160,7 @@ int main() {
                     }
                 }
 
-                double cumscore = 0.95*getCumScore(queryWordIDs, posWordMap, hitPos) + 0.05*stod(docs_info[docs[0][i-1].first][1]);
+                double cumscore = 0.992*getCumScore(queryWordIDs, posWordMap, hitPos) + 0.008*stod(docs_info[docs[0][i-1].first][1]);
                 docScores.emplace_back(docs[0][i - 1].first, cumscore);
             }
         }
@@ -330,7 +330,7 @@ void customIntersection(vector<vector<pair<wstring,wstring>>> &documents){
 
     for (auto & document : documents){
         document.erase(remove_if(document.begin(), document.end(),
-                                     [&commonDocIDs](const pair<wstring, wstring> &s) { return !commonDocIDs.count(s.first); }), document.end());
+                                 [&commonDocIDs](const pair<wstring, wstring> &s) { return !commonDocIDs.count(s.first); }), document.end());
     }
 }
 
